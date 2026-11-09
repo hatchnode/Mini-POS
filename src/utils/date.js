@@ -26,3 +26,20 @@ export function timeAgo(ts, now = Date.now()) {
 }
 
 export const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
+
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+
+/** Time only when `ts` falls on the same day as `ref`, otherwise a short date and time. */
+export const timeOnDay = (ts, ref) =>
+  sameDay(ts, ref)
+    ? timeStr(ts)
+    : new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+/** Human duration: "<1 min", "12 min", "1h 05m". */
+export function durationStr(ms) {
+  if (ms == null || ms < 0) return '—';
+  const mins = Math.round(ms / 60000);
+  if (mins < 1) return '<1 min';
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
+}

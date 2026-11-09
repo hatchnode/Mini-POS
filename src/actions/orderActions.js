@@ -1,11 +1,3 @@
-import {
-  applyTipPercent,
-  openCheckout,
-  refreshCheckout,
-  setPaymentMethod,
-  setTendered,
-  submitPayment,
-} from '../components/checkoutDialog.js';
 import { openMoveDialog } from '../components/moveDialog.js';
 import { appendNotePreset, openNoteDialog, saveNote } from '../components/noteDialog.js';
 import { createTicket } from '../domain/kitchen.js';
@@ -106,7 +98,7 @@ export const click = {
   },
   printBill() {
     const order = currentOrder();
-    if (order) printReceipt(order, { bill: true });
+    if (order) printReceipt(order);
   },
   moveOrder: () => openMoveDialog(),
   moveOrderTo(el) {
@@ -135,11 +127,6 @@ export const click = {
     });
   },
 
-  openCheckout: () => openCheckout(),
-  setPaymentMethod: (el) => setPaymentMethod(el),
-  applyTipPercent: (el) => applyTipPercent(Number(el.dataset.p)),
-  setTendered: (el) => setTendered(Number(el.dataset.v)),
-  submitPayment: () => submitPayment(),
   printReceipt(el) {
     const order = store.data.orders.find((o) => o.id === el.dataset.id);
     if (order) printReceipt(order);
@@ -152,9 +139,4 @@ export const input = {
     store.ui.search = el.value;
     $('#item-grid').innerHTML = renderItemsGrid(); // keep focus in the search box
   },
-  checkout: () => refreshCheckout(),
-};
-
-export const change = {
-  checkout: () => refreshCheckout(),
 };

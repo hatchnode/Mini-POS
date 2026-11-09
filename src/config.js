@@ -1,11 +1,9 @@
 /** App-wide constants. Change these to tune behaviour without touching logic. */
 
 export const STORAGE_KEY = 'mini-pos-v1';
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const MAX_TABLES = 60;
-export const PAYMENT_METHODS = ['cash', 'card', 'other'];
-export const TIP_PRESETS = [10, 15, 20];
 
 /** Kitchen tickets turn amber / red after this many minutes. */
 export const TICKET_WARN_MINUTES = 8;

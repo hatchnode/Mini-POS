@@ -1,9 +1,9 @@
-import { calcTotals, itemCount, openOrders, orderLabel } from '../domain/orders.js';
+import { calcTotals, itemCount, openOrders, orderDuration, orderLabel } from '../domain/orders.js';
 import { chartHours, summarizeSales } from '../domain/sales.js';
 import { store } from '../state/store.js';
 import { money } from '../ui/format.js';
-import { dayRange, hourLabel, timeStr, todayStr } from '../utils/date.js';
-import { capitalize, esc } from '../utils/text.js';
+import { dayRange, durationStr, hourLabel, timeOnDay, timeStr, todayStr } from '../utils/date.js';
+import { esc } from '../utils/text.js';
 
 const kpi = (label, value) =>
   `<div class="panel kpi"><div class="l">${label}</div><div class="v">${value}</div></div>`;
@@ -24,19 +24,21 @@ function hourlyChart(byHour) {
 }
 
 function ordersTable(orders) {
-  if (!orders.length) return '<div class="empty">No orders paid on this day.</div>';
+  if (!orders.length) return '<div class="empty">No orders completed on this day.</div>';
   const rows = orders
     .map(
       (o) => `<tr class="${o.status === 'void' ? 'void' : ''}">
-        <td>${o.no}</td><td>${timeStr(o.paidAt)}</td><td>${esc(orderLabel(o))}</td>
-        <td class="n">${itemCount(o)}</td><td>${capitalize(o.payment.method)}</td><td class="n">${money(o.totals.total)}</td>
+        <td>${o.no}</td><td>${esc(orderLabel(o))}</td>
+        <td>${o.createdAt ? timeOnDay(o.createdAt, o.completedAt) : '—'}</td><td>${timeStr(o.completedAt)}</td>
+        <td class="n">${durationStr(orderDuration(o))}</td>
+        <td class="n">${itemCount(o)}</td><td class="n">${money(o.totals.total)}</td>
         <td class="acts">
           <button class="small" data-act="printReceipt" data-id="${o.id}">Receipt</button>
-          ${o.status === 'paid' ? `<button class="small btn-danger" data-act="voidSale" data-id="${o.id}">Void</button>` : '<span class="muted small">voided</span>'}
+          ${o.status === 'completed' ? `<button class="small btn-danger" data-act="voidSale" data-id="${o.id}">Void</button>` : '<span class="muted small">voided</span>'}
         </td></tr>`,
     )
     .join('');
-  return `<table class="t"><thead><tr><th>#</th><th>Time</th><th>Order</th><th class="n">Items</th><th>Paid by</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="t"><thead><tr><th>#</th><th>Order</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Items</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function topItemsTable(items) {
@@ -56,9 +58,6 @@ export function renderSalesView() {
   const isToday = ui.salesDate === todayStr();
   const open = openOrders(data);
   const openTotal = open.reduce((sum, o) => sum + calcTotals(o).total, 0);
-  const byMethod = Object.entries(s.byMethod)
-    .map(([m, v]) => `<div class="row"><span>${capitalize(m)}</span><b>${money(v)}</b></div>`)
-    .join('');
 
   return `<div class="page">
     <div class="page-top"><h1>Sales</h1>
@@ -68,26 +67,19 @@ export function renderSalesView() {
       </div>
     </div>
     <div class="kpis">
-      ${kpi('Total collected', money(s.total))}
-      ${kpi('Sales (excl. tips)', money(s.net))}
+      ${kpi('Total sales', money(s.total))}
       ${kpi('Orders', s.count)}
       ${kpi('Average order', money(s.average))}
-      ${kpi('Tips', money(s.tips))}
-      ${kpi('Discounts', money(s.discounts))}
-      ${isToday ? kpi('Open now', `${open.length} · ${money(openTotal)}`) : ''}
+      ${kpi('Items sold', s.itemsSold)}
+      ${kpi('Avg. time to complete', durationStr(s.averageDuration))}
+      ${isToday ? kpi('Still open', `${open.length} · ${money(openTotal)}`) : ''}
     </div>
     <div class="split">
       <section class="panel"><div class="panel-h"><h2>Sales by hour</h2></div><div class="panel-b">${hourlyChart(s.byHour)}</div></section>
-      <section class="panel"><div class="panel-h"><h2>By payment</h2></div><div class="panel-b stack">
-        ${byMethod}
-        <hr><div class="muted small">Cash in the drawer should match the Cash line, plus your opening float.</div>
-      </div></section>
-    </div>
-    <div class="split">
-      <section class="panel"><div class="panel-h"><h2>Orders</h2><span class="muted small">${s.orders.length}</span></div>
-        <div class="tablewrap">${ordersTable(s.orders)}</div></section>
       <section class="panel"><div class="panel-h"><h2>Top items</h2></div>
         <div class="tablewrap">${topItemsTable(s.topItems)}</div></section>
     </div>
+    <section class="panel"><div class="panel-h"><h2>Completed orders</h2><span class="muted small">${s.orders.length}</span></div>
+      <div class="tablewrap">${ordersTable(s.orders)}</div></section>
   </div>`;
 }

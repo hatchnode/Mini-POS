@@ -1,26 +1,32 @@
-import { PAYMENT_METHODS } from '../config.js';
-import { orderLabel } from './orders.js';
+import { orderDuration, orderLabel } from './orders.js';
 
 /**
- * Summarise orders settled in [start, end).
- * `orders` lists paid and voided orders (newest first); figures count paid orders only.
+ * Summarise orders completed in [start, end).
+ * `orders` lists completed and voided orders (newest first); figures count completed orders only.
  */
 export function summarizeSales(allOrders, [start, end]) {
   const orders = allOrders
-    .filter((o) => o.paidAt && o.paidAt >= start && o.paidAt < end)
-    .sort((a, b) => b.paidAt - a.paidAt);
-  const paid = orders.filter((o) => o.status === 'paid');
-  const sum = (pick) => paid.reduce((s, o) => s + pick(o.totals), 0);
+    .filter((o) => o.completedAt && o.completedAt >= start && o.completedAt < end)
+    .sort((a, b) => b.completedAt - a.completedAt);
+  const completed = orders.filter((o) => o.status === 'completed');
 
-  const total = sum((t) => t.total);
-  const byMethod = Object.fromEntries(PAYMENT_METHODS.map((m) => [m, 0]));
+  let total = 0;
+  let itemsSold = 0;
+  let durationSum = 0;
+  let durationCount = 0;
   const byHour = {};
   const items = {};
-  for (const o of paid) {
-    byMethod[o.payment.method] = (byMethod[o.payment.method] || 0) + o.totals.total;
-    const h = new Date(o.paidAt).getHours();
+  for (const o of completed) {
+    total += o.totals.total;
+    const d = orderDuration(o);
+    if (d != null) {
+      durationSum += d;
+      durationCount += 1;
+    }
+    const h = new Date(o.completedAt).getHours();
     byHour[h] = (byHour[h] || 0) + o.totals.total;
     for (const l of o.lines) {
+      itemsSold += l.qty;
       const it = (items[l.name] ||= { name: l.name, qty: 0, revenue: 0 });
       it.qty += l.qty;
       it.revenue += l.qty * l.price;
@@ -29,13 +35,12 @@ export function summarizeSales(allOrders, [start, end]) {
 
   return {
     orders,
-    count: paid.length,
+    count: completed.length,
     total,
-    net: sum((t) => t.subtotal - t.discount),
-    tips: sum((t) => t.tip),
-    discounts: sum((t) => t.discount),
-    average: paid.length ? Math.round(total / paid.length) : 0,
-    byMethod,
+    itemsSold,
+    average: completed.length ? Math.round(total / completed.length) : 0,
+    /** Average ordered → completed time in ms, or null when there is nothing to average. */
+    averageDuration: durationCount ? Math.round(durationSum / durationCount) : null,
     byHour,
     topItems: Object.values(items)
       .sort((a, b) => b.revenue - a.revenue)
@@ -55,30 +60,18 @@ export function chartHours(byHour) {
 const dec = (c) => (c / 100).toFixed(2);
 
 export function salesCsvRows(orders) {
-  const header = [
-    'Order',
-    'Paid at',
-    'Order type',
-    'Items',
-    'Subtotal',
-    'Discount',
-    'Tip',
-    'Total',
-    'Payment',
-    'Status',
-  ];
+  const header = ['Order', 'Order type', 'Ordered at', 'Completed at', 'Minutes', 'Items', 'Total', 'Status'];
+  const stamp = (ts) => (ts ? new Date(ts).toLocaleString() : '');
   const rows = [...orders]
-    .sort((a, b) => a.paidAt - b.paidAt)
+    .sort((a, b) => a.completedAt - b.completedAt)
     .map((o) => [
       o.no,
-      new Date(o.paidAt).toLocaleString(),
       orderLabel(o),
+      stamp(o.createdAt),
+      stamp(o.completedAt),
+      orderDuration(o) == null ? '' : Math.round(orderDuration(o) / 60000),
       o.lines.map((l) => `${l.qty}x ${l.name}`).join('; '),
-      dec(o.totals.subtotal),
-      dec(o.totals.discount),
-      dec(o.totals.tip),
       dec(o.totals.total),
-      o.payment.method,
       o.status,
     ]);
   return [header, ...rows];

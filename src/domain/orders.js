@@ -1,27 +1,24 @@
 /**
  * Order rules. Pure functions over plain data (no DOM), so they are easy to test.
  * Amounts are integer cents.
+ *
+ * Lifecycle: open → completed (when the kitchen marks its last ticket ready) or void.
  */
 import { uid } from '../utils/id.js';
 
 export function calcTotals(order) {
   const subtotal = order.lines.reduce((sum, l) => sum + l.price * l.qty, 0);
-  let discount = 0;
-  if (order.discount) {
-    discount =
-      order.discount.type === 'pct'
-        ? Math.round((subtotal * order.discount.value) / 100)
-        : Math.round(order.discount.value);
-  }
-  discount = Math.min(Math.max(discount, 0), subtotal);
-  const tip = Math.max(0, order.tip || 0);
-  return { subtotal, discount, tip, total: subtotal - discount + tip };
+  return { subtotal, total: subtotal };
 }
 
 export const orderLabel = (order) => (order.table != null ? `Table ${order.table}` : 'Takeaway');
 export const itemCount = (order) => order.lines.reduce((n, l) => n + l.qty, 0);
 export const unsentCount = (order) => order.lines.reduce((n, l) => n + Math.max(0, l.qty - l.sent), 0);
 export const openOrders = (data) => data.orders.filter((o) => o.status === 'open');
+
+/** Milliseconds from ordering to completion, or null if not completed (or no order time recorded). */
+export const orderDuration = (order) =>
+  order.createdAt && order.completedAt ? order.completedAt - order.createdAt : null;
 
 /** `table` is a table number or 'take' for takeaway. */
 export function createOrder(data, table, now = Date.now()) {
@@ -32,8 +29,6 @@ export function createOrder(data, table, now = Date.now()) {
     createdAt: now,
     status: 'open',
     lines: [],
-    discount: null,
-    tip: 0,
   };
   data.orders.push(order);
   return order;
@@ -87,6 +82,20 @@ export function moveOrder(data, order, table) {
   });
 }
 
+/** Close an order as a sale, freezing its totals. */
+export function completeOrder(order, now = Date.now()) {
+  order.status = 'completed';
+  order.completedAt = now;
+  order.totals = calcTotals(order);
+}
+
+/** Put a completed order back to open (kitchen recalled a ticket). */
+export function reopenOrder(order) {
+  order.status = 'open';
+  delete order.completedAt;
+  delete order.totals;
+}
+
 export function voidOrder(data, order, now = Date.now()) {
   order.status = 'void';
   order.voidedAt = now;
@@ -96,9 +105,4 @@ export function voidOrder(data, order, now = Date.now()) {
       t.doneAt = now;
     }
   });
-}
-
-/** Discount from the checkout form: a % (0–100) or an amount in cents. */
-export function setDiscount(order, type, value) {
-  order.discount = value > 0 ? { type, value: type === 'pct' ? Math.min(value, 100) : value } : null;
 }

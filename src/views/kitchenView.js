@@ -1,9 +1,10 @@
-import { ticketUrgency } from '../domain/kitchen.js';
+import { completesOrder, ticketUrgency } from '../domain/kitchen.js';
 import { store } from '../state/store.js';
 import { timeAgo, timeStr } from '../utils/date.js';
 import { esc } from '../utils/text.js';
 
 function ticketCard(t, now) {
+  const finishes = completesOrder(store.data, t);
   const lines = t.lines
     .map(
       (l) =>
@@ -12,7 +13,7 @@ function ticketCard(t, now) {
     .join('');
   const button = t.done
     ? `<button data-act="recallTicket" data-id="${t.id}">Recall</button>`
-    : `<button class="btn-ok" data-act="markTicketReady" data-id="${t.id}">Mark ready</button>`;
+    : `<button class="btn-ok" data-act="markTicketReady" data-id="${t.id}">${finishes ? 'Ready · complete order' : 'Mark ready'}</button>`;
   return `<article class="kcard ${ticketUrgency(t, now)}">
     <header><b>${esc(t.label)}</b><span class="muted">#${t.no}</span></header>
     <div class="muted small">${timeStr(t.createdAt)} · ${timeAgo(t.createdAt, now)}</div>
@@ -29,7 +30,7 @@ export function renderKitchenView() {
   const list = ui.showReadyTickets ? ready : active;
   const empty = ui.showReadyTickets
     ? 'Nothing marked ready in the last 24 hours.'
-    : 'No tickets waiting. Orders appear here when you tap “Send to kitchen”.';
+    : 'No tickets waiting. Orders appear here when you tap “Send to kitchen”. Marking the last ticket of an order ready completes the order.';
 
   return `<div class="khead">
       <h1>Kitchen${ui.showReadyTickets ? ' · ready' : ''}</h1>
