@@ -1,4 +1,4 @@
-import { isInKitchen } from '../domain/kitchen.js';
+import { isInKitchen, lineKitchenStatus } from '../domain/kitchen.js';
 import { calcTotals, itemCount, openOrders, orderLabel, unsentCount } from '../domain/orders.js';
 import { currentOrder, store } from '../state/store.js';
 import { categoryColor, categoryIndex, money } from '../ui/format.js';
@@ -74,11 +74,21 @@ function menuPanel() {
   </section>`;
 }
 
-function lineRow(l) {
+function lineStatus(order, l) {
+  const { unsent, cooking, ready } = lineKitchenStatus(order, l);
+  const parts = [];
+  if (unsent) parts.push(`<span class="lstat new">${unsent} not sent</span>`);
+  if (cooking) parts.push(`<span class="lstat cooking">${cooking} cooking</span>`);
+  if (ready) parts.push(`<span class="lstat ready">✓ ${ready} ready</span>`);
+  return parts.length ? `<div class="lstats">${parts.join('')}</div>` : '';
+}
+
+function lineRow(order, l) {
   return `<div class="line">
     <div>
       <div class="nm">${esc(l.name)}${l.qty > l.sent ? '<span class="new-dot" title="Not yet sent to kitchen"></span>' : ''}</div>
       ${l.note ? `<div class="note">↳ ${esc(l.note)}</div>` : ''}
+      ${lineStatus(order, l)}
       <div class="meta">${money(l.price)} each · <button class="linkbtn" data-act="editNote" data-id="${l.id}">${l.note ? 'Edit note' : 'Add note'}</button></div>
     </div>
     <div class="ln-side">
@@ -102,10 +112,10 @@ function ticketPanel(order) {
   const t = calcTotals(order);
   const unsent = unsentCount(order);
   const hasLines = order.lines.length > 0;
-  const inKitchen = isInKitchen(store.data, order.id);
+  const inKitchen = isInKitchen(order);
   let status = '';
-  if (inKitchen && !unsent) status = 'In the kitchen. This order completes when the kitchen marks it ready.';
-  else if (inKitchen) status = 'Part of this order is in the kitchen. Send the new items too.';
+  if (inKitchen && !unsent) status = 'In the kitchen. The table frees when every dish is marked ready.';
+  else if (inKitchen) status = 'Some dishes are in the kitchen. Send the new ones too.';
 
   return `<div class="panel-h">
       <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}</div></div>
@@ -114,7 +124,7 @@ function ticketPanel(order) {
         <button class="small btn-danger" data-act="voidOrder">Void</button>
       </div>
     </div>
-    <div class="scroll panel-b" data-keep="ticket">${hasLines ? order.lines.map(lineRow).join('') : '<div class="empty">No items yet.</div>'}</div>
+    <div class="scroll panel-b" data-keep="ticket">${hasLines ? order.lines.map((l) => lineRow(order, l)).join('') : '<div class="empty">No items yet.</div>'}</div>
     <div class="sum">
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>
     </div>

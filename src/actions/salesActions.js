@@ -1,4 +1,4 @@
-import { salesCsvRows, summarizeSales } from '../domain/sales.js';
+import { completedDishes, dishCsvRows } from '../domain/sales.js';
 import { save, store } from '../state/store.js';
 import { money } from '../ui/format.js';
 import { confirmDialog } from '../ui/modal.js';
@@ -12,7 +12,7 @@ export const click = {
     const order = store.data.orders.find((o) => o.id === el.dataset.id);
     if (!order) return;
     confirmDialog({
-      message: `Void completed order #${order.no} (${money(order.totals.total)})? It will be excluded from sales.`,
+      message: `Void completed order #${order.no} (${money(order.totals.total)})? Its dishes will be excluded from sales.`,
       confirmLabel: 'Void sale',
       danger: true,
       onConfirm: () => {
@@ -25,8 +25,8 @@ export const click = {
     });
   },
   exportSalesCsv() {
-    const { orders } = summarizeSales(store.data.orders, dayRange(store.ui.salesDate));
-    downloadText(`sales-${store.ui.salesDate}.csv`, toCsv(salesCsvRows(orders)), 'text/csv');
+    const dishes = completedDishes(store.data.orders, dayRange(store.ui.salesDate));
+    downloadText(`dishes-${store.ui.salesDate}.csv`, toCsv(dishCsvRows(dishes)), 'text/csv');
   },
 };
 

@@ -1,4 +1,5 @@
 import { calcTotals, itemCount, openOrders, orderDuration, orderLabel } from '../domain/orders.js';
+import { dishDuration } from '../domain/kitchen.js';
 import { chartHours, summarizeSales } from '../domain/sales.js';
 import { store } from '../state/store.js';
 import { money } from '../ui/format.js';
@@ -23,8 +24,27 @@ function hourlyChart(byHour) {
   return `<div class="bars">${bars}</div>`;
 }
 
-function ordersTable(orders) {
-  if (!orders.length) return '<div class="empty">No orders completed on this day.</div>';
+/** The order log: one row per dish, with its own order and completion time. */
+function dishLog(dishes) {
+  if (!dishes.length) return '<div class="empty">No dishes completed on this day.</div>';
+  const rows = dishes
+    .map(
+      (d) => `<tr>
+        <td>${esc(d.orderLabel)} <span class="muted">#${d.orderNo}</span></td>
+        <td><b>${d.qty}×</b> ${esc(d.name)}${d.note ? ` <span class="note">${esc(d.note)}</span>` : ''}</td>
+        <td>${d.orderedAt ? timeOnDay(d.orderedAt, d.completedAt) : '—'}</td>
+        <td>${timeStr(d.completedAt)}</td>
+        <td class="n">${durationStr(dishDuration(d))}</td>
+        <td class="n">${money(d.price * d.qty)}</td>
+      </tr>`,
+    )
+    .join('');
+  return `<table class="t"><thead><tr><th>Order</th><th>Dish</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Amount</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/** Finished bills, for reprinting or voiding. */
+function billsTable(orders) {
+  if (!orders.length) return '<div class="empty">No tables finished on this day.</div>';
   const rows = orders
     .map(
       (o) => `<tr class="${o.status === 'void' ? 'void' : ''}">
@@ -38,7 +58,7 @@ function ordersTable(orders) {
         </td></tr>`,
     )
     .join('');
-  return `<table class="t"><thead><tr><th>#</th><th>Order</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Items</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="t"><thead><tr><th>#</th><th>Order</th><th>Opened</th><th>Finished</th><th class="n">Took</th><th class="n">Items</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function topItemsTable(items) {
@@ -63,15 +83,14 @@ export function renderSalesView() {
     <div class="page-top"><h1>Sales</h1>
       <div class="inrow">
         <input type="date" value="${ui.salesDate}" max="${todayStr()}" data-change="salesDate" aria-label="Day">
-        <button data-act="exportSalesCsv" ${s.orders.length ? '' : 'disabled'}>Export CSV</button>
+        <button data-act="exportSalesCsv" ${s.dishes.length ? '' : 'disabled'}>Export CSV</button>
       </div>
     </div>
     <div class="kpis">
       ${kpi('Total sales', money(s.total))}
-      ${kpi('Orders', s.count)}
-      ${kpi('Average order', money(s.average))}
-      ${kpi('Items sold', s.itemsSold)}
-      ${kpi('Avg. time to complete', durationStr(s.averageDuration))}
+      ${kpi('Dishes completed', `${s.dishCount} <span class="muted small">(${s.itemsSold} items)</span>`)}
+      ${kpi('Avg. dish time', durationStr(s.averageDishTime))}
+      ${kpi('Tables served', s.tablesServed)}
       ${isToday ? kpi('Still open', `${open.length} · ${money(openTotal)}`) : ''}
     </div>
     <div class="split">
@@ -79,7 +98,9 @@ export function renderSalesView() {
       <section class="panel"><div class="panel-h"><h2>Top items</h2></div>
         <div class="tablewrap">${topItemsTable(s.topItems)}</div></section>
     </div>
-    <section class="panel"><div class="panel-h"><h2>Completed orders</h2><span class="muted small">${s.orders.length}</span></div>
-      <div class="tablewrap">${ordersTable(s.orders)}</div></section>
+    <section class="panel"><div class="panel-h"><h2>Dish log</h2><span class="muted small">${s.dishCount} completed</span></div>
+      <div class="tablewrap">${dishLog(s.dishes)}</div></section>
+    <section class="panel"><div class="panel-h"><h2>Tables &amp; bills</h2><span class="muted small">${s.orders.length}</span></div>
+      <div class="tablewrap">${billsTable(s.orders)}</div></section>
   </div>`;
 }

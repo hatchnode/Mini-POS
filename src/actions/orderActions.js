@@ -1,6 +1,6 @@
 import { openMoveDialog } from '../components/moveDialog.js';
 import { appendNotePreset, openNoteDialog, saveNote } from '../components/noteDialog.js';
-import { createTicket } from '../domain/kitchen.js';
+import { cancelPending, completeIfDone, sendToKitchen } from '../domain/kitchen.js';
 import * as Orders from '../domain/orders.js';
 import { currentOrder, save, store } from '../state/store.js';
 import { closeModal, confirmDialog } from '../ui/modal.js';
@@ -42,17 +42,23 @@ function changeLineQty(lineId, delta) {
   if (!line) return;
   const qty = line.qty + delta;
   const apply = () => {
+    const removedSent = Math.max(0, line.sent - Math.max(qty, 0));
     Orders.setLineQty(order, lineId, qty);
+    if (removedSent) cancelPending(order, lineId, removedSent); // take it off the kitchen screen
     if (Orders.discardIfEmpty(store.data, order)) {
       store.ui.currentOrderId = null;
       store.ui.pendingTable = order.table ?? 'take';
+    } else if (completeIfDone(order)) {
+      // Removing the last cooking dish can leave nothing for the kitchen to do.
+      store.ui.currentOrderId = null;
+      toast(`${Orders.orderLabel(order)} #${order.no} completed`);
     }
     save();
     render();
   };
   if (delta < 0 && qty < line.sent) {
     confirmDialog({
-      message: `"${line.name}" was already sent to the kitchen. Remove it anyway?`,
+      message: `"${line.name}" was already sent to the kitchen. Remove it anyway? If it is still cooking it will be taken off the kitchen screen.`,
       confirmLabel: 'Remove',
       danger: true,
       onConfirm: apply,
@@ -88,13 +94,14 @@ export const click = {
   sendToKitchen() {
     const order = currentOrder();
     if (!order) return;
-    if (!createTicket(store.data, order)) {
+    const sent = sendToKitchen(order);
+    if (!sent.length) {
       toast('Nothing new to send');
       return;
     }
     save();
     render();
-    toast('Sent to kitchen');
+    toast(`Sent ${sent.length} dish${sent.length === 1 ? '' : 'es'} to the kitchen`);
   },
   printBill() {
     const order = currentOrder();
@@ -104,7 +111,7 @@ export const click = {
   moveOrderTo(el) {
     const order = currentOrder();
     if (!order) return;
-    Orders.moveOrder(store.data, order, el.dataset.n === 'take' ? 'take' : Number(el.dataset.n));
+    Orders.moveOrder(order, el.dataset.n === 'take' ? 'take' : Number(el.dataset.n));
     save();
     closeModal();
     render();
@@ -118,7 +125,7 @@ export const click = {
       confirmLabel: 'Void order',
       danger: true,
       onConfirm: () => {
-        Orders.voidOrder(store.data, order);
+        Orders.voidOrder(order);
         store.ui.currentOrderId = null;
         save();
         render();

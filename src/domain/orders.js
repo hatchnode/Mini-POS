@@ -2,7 +2,11 @@
  * Order rules. Pure functions over plain data (no DOM), so they are easy to test.
  * Amounts are integer cents.
  *
- * Lifecycle: open → completed (when the kitchen marks its last ticket ready) or void.
+ * An order is a table's (or takeaway's) bill: `lines` are what was ordered. Each time lines are
+ * sent to the kitchen they become `dishes` (see kitchen.js), each with its own order and
+ * completion time.
+ *
+ * Lifecycle: open → completed (when the kitchen has marked every dish ready) or void.
  */
 import { uid } from '../utils/id.js';
 
@@ -29,6 +33,7 @@ export function createOrder(data, table, now = Date.now()) {
     createdAt: now,
     status: 'open',
     lines: [],
+    dishes: [],
   };
   data.orders.push(order);
   return order;
@@ -66,20 +71,17 @@ export function setLineNote(order, lineId, note) {
   if (line) line.note = note.trim();
 }
 
-/** Remove an order that never got items or kitchen tickets. Returns true if removed. */
+/** Remove an order that never got items or sent any dishes. Returns true if removed. */
 export function discardIfEmpty(data, order) {
-  if (order.lines.length || data.tickets.some((t) => t.orderId === order.id)) return false;
+  if (order.lines.length || order.dishes?.length) return false;
   data.orders = data.orders.filter((o) => o !== order);
   if (order.no === data.seq - 1) data.seq -= 1;
   return true;
 }
 
 /** `table` is a table number or 'take'. */
-export function moveOrder(data, order, table) {
+export function moveOrder(order, table) {
   order.table = table === 'take' ? null : table;
-  data.tickets.forEach((t) => {
-    if (t.orderId === order.id) t.label = orderLabel(order);
-  });
 }
 
 /** Close an order as a sale, freezing its totals. */
@@ -89,20 +91,15 @@ export function completeOrder(order, now = Date.now()) {
   order.totals = calcTotals(order);
 }
 
-/** Put a completed order back to open (kitchen recalled a ticket). */
+/** Put a completed order back to open (the kitchen recalled one of its dishes). */
 export function reopenOrder(order) {
   order.status = 'open';
   delete order.completedAt;
   delete order.totals;
 }
 
-export function voidOrder(data, order, now = Date.now()) {
+/** Void an order. Its dishes leave the kitchen screen and are excluded from sales. */
+export function voidOrder(order, now = Date.now()) {
   order.status = 'void';
   order.voidedAt = now;
-  data.tickets.forEach((t) => {
-    if (t.orderId === order.id && !t.done) {
-      t.done = true;
-      t.doneAt = now;
-    }
-  });
 }

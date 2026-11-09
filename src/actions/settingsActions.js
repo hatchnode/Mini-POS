@@ -33,11 +33,11 @@ export const click = {
   clearOrders() {
     confirmDialog({
       message:
-        'Delete all orders, sales history and kitchen tickets? Your menu and settings are kept. Export a backup first if you need the history.',
+        'Delete all orders, sales history and the kitchen queue? Your menu and settings are kept. Export a backup first if you need the history.',
       confirmLabel: 'Clear',
       danger: true,
       onConfirm: () => {
-        Object.assign(store.data, { orders: [], tickets: [], seq: 1 });
+        Object.assign(store.data, { orders: [], seq: 1 });
         clearSelection();
         save();
         render();
