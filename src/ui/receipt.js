@@ -4,14 +4,15 @@ import { $ } from '../utils/dom.js';
 import { dateTimeStr } from '../utils/date.js';
 import { esc } from '../utils/text.js';
 import { money } from './format.js';
+import { closeButton, openModal } from './modal.js';
 
 const row = (label, value) => `<tr><td>${label}</td><td class="r">${value}</td></tr>`;
 
 /**
- * Print an order. Open orders print as a "BILL", completed ones as a "RECEIPT".
- * Layout lives in styles/print.css.
+ * Receipt markup for an order. Open orders are a "BILL", completed ones a "RECEIPT".
+ * Layout lives in styles/print.css and is used both for the on-screen preview and for printing.
  */
-export function printReceipt(order) {
+export function receiptHtml(order, now = Date.now()) {
   const isOpen = order.status === 'open';
   // Completed orders keep the totals frozen at completion (older data may include discount/tax/tip).
   const t = !isOpen && order.totals ? order.totals : calcTotals(order);
@@ -29,13 +30,13 @@ export function printReceipt(order) {
     t.tip ? row('Tip', money(t.tip)) : '',
   ].join('');
 
-  $('#print-area').innerHTML = `<div class="rc">
+  return `<div class="rc">
     <div class="rc-c"><div class="rc-name">${esc(s.name)}</div>${s.address ? `<div>${esc(s.address)}</div>` : ''}</div>
     <hr><div class="rc-c">${isOpen ? 'BILL' : 'RECEIPT'}</div>
     <div>Order #${order.no} · ${esc(orderLabel(order))}</div>
     <table>
       ${order.createdAt ? row('Ordered', dateTimeStr(order.createdAt)) : ''}
-      ${order.completedAt ? row('Completed', dateTimeStr(order.completedAt)) : row('Printed', dateTimeStr(Date.now()))}
+      ${order.completedAt ? row('Completed', dateTimeStr(order.completedAt)) : row('Printed', dateTimeStr(now))}
     </table>
     ${order.status === 'void' ? '<div class="rc-c"><b>*** VOID ***</b></div>' : ''}
     <hr><table>${lines}</table>
@@ -45,5 +46,25 @@ export function printReceipt(order) {
     </table>
     ${s.footer ? `<hr><div class="rc-c">${esc(s.footer)}</div>` : ''}
   </div>`;
-  setTimeout(() => window.print(), 50);
+}
+
+/** Show the receipt on screen, with a Print button. */
+export function showReceipt(order) {
+  const title = `${order.status === 'open' ? 'Bill' : 'Receipt'} · ${esc(orderLabel(order))} #${order.no}`;
+  openModal(`
+    <div class="mh"><h3>${title}</h3>${closeButton}</div>
+    <div class="mb"><div class="rc-preview">${receiptHtml(order)}</div></div>
+    <div class="mf">
+      <button data-act="closeModal">Close</button>
+      <button class="btn-primary" data-act="printReceiptNow" data-id="${order.id}">Print</button>
+    </div>`);
+}
+
+/**
+ * Print the receipt. Must run directly inside the click handler: browsers may ignore
+ * window.print() when it is called later (for example from a timer).
+ */
+export function printReceiptNow(order) {
+  $('#print-area').innerHTML = receiptHtml(order);
+  window.print();
 }

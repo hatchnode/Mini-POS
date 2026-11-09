@@ -4,7 +4,7 @@ import { cancelPending, completeIfDone, sendToKitchen } from '../domain/kitchen.
 import * as Orders from '../domain/orders.js';
 import { currentOrder, save, store } from '../state/store.js';
 import { closeModal, confirmDialog } from '../ui/modal.js';
-import { printReceipt } from '../ui/receipt.js';
+import { printReceiptNow, showReceipt } from '../ui/receipt.js';
 import { render } from '../ui/render.js';
 import { toast } from '../ui/toast.js';
 import { $ } from '../utils/dom.js';
@@ -105,7 +105,7 @@ export const click = {
   },
   printBill() {
     const order = currentOrder();
-    if (order) printReceipt(order);
+    if (order) showReceipt(order);
   },
   moveOrder: () => openMoveDialog(),
   moveOrderTo(el) {
@@ -134,9 +134,14 @@ export const click = {
     });
   },
 
+  /** "Receipt" buttons (Sales) open the on-screen receipt; its Print button prints it. */
   printReceipt(el) {
     const order = store.data.orders.find((o) => o.id === el.dataset.id);
-    if (order) printReceipt(order);
+    if (order) showReceipt(order);
+  },
+  printReceiptNow(el) {
+    const order = store.data.orders.find((o) => o.id === el.dataset.id);
+    if (order) printReceiptNow(order);
   },
   scrollToTicket: () => $('.ticket-panel')?.scrollIntoView({ behavior: 'smooth' }),
 };
