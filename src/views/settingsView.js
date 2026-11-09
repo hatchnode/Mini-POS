@@ -12,7 +12,8 @@ export function renderSettingsView() {
   return `<div class="page"><div class="page-top"><h1>Settings</h1></div><div class="two even">
     <section class="panel"><div class="panel-h"><h2>Restaurant</h2></div><div class="panel-b form">
       <label class="fld">Name<input id="s-name" value="${esc(s.name)}"></label>
-      <label class="fld">Address / phone (printed on receipts)<input id="s-address" value="${esc(s.address)}"></label>
+      <label class="fld">Location (printed on receipts)<input id="s-address" value="${esc(s.address)}" placeholder="e.g. 12 Main St, Springfield"></label>
+      <label class="fld">Phone (printed on receipts)<input id="s-phone" type="tel" value="${esc(s.phone)}" placeholder="e.g. (555) 123-4567"></label>
       <div class="grid2">
         <label class="fld">Currency symbol<input id="s-currency" value="${esc(s.currency)}" maxlength="4"></label>
         <label class="fld">Tables<input id="s-tables" type="number" min="0" max="${MAX_TABLES}" value="${s.tables}"></label>

@@ -11,7 +11,7 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Receipts**: **Print bill** (open table) or **Receipt** (Sales) shows the receipt on screen; **Print** sends it to the printer. Laid out for 80 mm thermal printers, and works with any printer or "Save as PDF".
 - **Order times**: every dish logs when it was ordered (sent) and when the kitchen completed it. Each order line on the ticket shows how many are not sent, cooking or ready.
 - **Sales**: each dish counts as a sale when it is marked ready. For any day you see total sales, dishes completed, average dish time, tables served, sales by hour, top items, a **dish log** (ordered, completed and time taken for every dish) and the day's bills with reprint/void. Export the dish log to CSV.
-- **Menu editor** and **settings** (name, address line, currency symbol, number of tables, receipt footer).
+- **Menu editor** and **settings** (name, location, phone, currency symbol, number of tables, receipt footer). The bottom of every receipt shows the restaurant name, location and phone.
 - **Backups**: export everything to JSON and import it on another device.
 
 ## Getting started

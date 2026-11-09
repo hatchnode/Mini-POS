@@ -31,7 +31,7 @@ export function receiptHtml(order, now = Date.now()) {
   ].join('');
 
   return `<div class="rc">
-    <div class="rc-c"><div class="rc-name">${esc(s.name)}</div>${s.address ? `<div>${esc(s.address)}</div>` : ''}</div>
+    <div class="rc-c"><div class="rc-name">${esc(s.name)}</div></div>
     <hr><div class="rc-c">${isOpen ? 'BILL' : 'RECEIPT'}</div>
     <div>Order #${order.no} · ${esc(orderLabel(order))}</div>
     <table>
@@ -44,7 +44,12 @@ export function receiptHtml(order, now = Date.now()) {
       ${legacyRows ? row('Subtotal', money(t.subtotal)) + legacyRows : ''}
       ${row('<b>TOTAL</b>', `<b>${money(t.total)}</b>`)}
     </table>
-    ${s.footer ? `<hr><div class="rc-c">${esc(s.footer)}</div>` : ''}
+    <hr><div class="rc-c rc-contact">
+      <div><b>${esc(s.name)}</b></div>
+      ${s.address ? `<div>${esc(s.address)}</div>` : ''}
+      ${s.phone ? `<div>Tel: ${esc(s.phone)}</div>` : ''}
+    </div>
+    ${s.footer ? `<div class="rc-c rc-footer">${esc(s.footer)}</div>` : ''}
   </div>`;
 }
 

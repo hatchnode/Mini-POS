@@ -37,6 +37,13 @@
   font-size: 15px;
   font-weight: 700;
 }
+.rc-contact {
+  display: grid;
+  gap: 1px;
+}
+.rc-footer {
+  margin-top: 6px;
+}
 .rn {
   font-size: 11px;
   padding-left: 12px;
