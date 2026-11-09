@@ -35,7 +35,9 @@ export const CATEGORY_COLORS = [
 
 export const DEFAULT_SETTINGS = {
   name: 'My Restaurant',
+  /** Location shown on receipts. */
   address: '',
+  phone: '',
   currency: '$',
   tables: 12,
   footer: 'Thank you! Come again.',

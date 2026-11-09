@@ -1,4 +1,70 @@
-/* Receipts: only #print-area is printed, sized for 80 mm thermal paper. */
+/*
+ * Receipts. The same .rc markup is shown in the on-screen preview (.rc-preview) and printed
+ * from #print-area, sized for 80 mm thermal paper. When printing, only #print-area is visible.
+ */
+.rc {
+  width: 72mm;
+  max-width: 100%;
+  font:
+    12px/1.35 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  color: #000;
+}
+.rc table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rc td {
+  vertical-align: top;
+  padding: 1px 0;
+}
+.rc .r {
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 8px;
+}
+.rc hr {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 6px 0;
+}
+.rc-c {
+  text-align: center;
+}
+.rc-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.rc-contact {
+  display: grid;
+  gap: 1px;
+}
+.rc-footer {
+  margin-top: 6px;
+}
+.rn {
+  font-size: 11px;
+  padding-left: 12px;
+}
+
+/* on-screen preview: a paper slip */
+.rc-preview {
+  display: flex;
+  justify-content: center;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 16px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.rc-preview .rc {
+  background: #fff;
+  padding: 14px 12px;
+  box-shadow: var(--shadow);
+}
+
 #print-area {
   display: none;
 }
@@ -15,43 +81,5 @@
   }
   @page {
     margin: 4mm;
-  }
-  .rc {
-    width: 72mm;
-    font:
-      12px/1.35 ui-monospace,
-      Menlo,
-      Consolas,
-      monospace;
-    color: #000;
-  }
-  .rc table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .rc td {
-    vertical-align: top;
-    padding: 1px 0;
-  }
-  .rc .r {
-    text-align: right;
-    white-space: nowrap;
-    padding-left: 8px;
-  }
-  .rc hr {
-    border: 0;
-    border-top: 1px dashed #000;
-    margin: 6px 0;
-  }
-  .rc-c {
-    text-align: center;
-  }
-  .rc-name {
-    font-size: 15px;
-    font-weight: 700;
-  }
-  .rn {
-    font-size: 11px;
-    padding-left: 12px;
   }
 }

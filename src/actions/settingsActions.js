@@ -13,6 +13,7 @@ export const click = {
     const s = store.data.settings;
     s.name = $('#s-name').value.trim() || 'My Restaurant';
     s.address = $('#s-address').value.trim();
+    s.phone = $('#s-phone').value.trim();
     s.currency = $('#s-currency').value;
     s.tables = Math.max(0, Math.min(MAX_TABLES, parseInt($('#s-tables').value, 10) || 0));
     s.footer = $('#s-footer').value.trim();
