@@ -180,6 +180,32 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.lstats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 3px 0 2px;
+}
+.lstat {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+}
+.lstat.new {
+  background: #fff1e8;
+  color: var(--accent);
+}
+.lstat.cooking {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.lstat.ready {
+  background: #e8f6ec;
+  color: var(--ok);
+}
 .new-dot {
   display: inline-block;
   width: 8px;

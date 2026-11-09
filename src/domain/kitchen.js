@@ -1,80 +1,132 @@
-import { DONE_TICKET_TTL_MS, TICKET_LATE_MINUTES, TICKET_WARN_MINUTES } from '../config.js';
-import { uid } from '../utils/id.js';
-import { completeOrder, orderLabel, reopenOrder, unsentCount } from './orders.js';
-
 /**
- * Create a kitchen ticket for everything not yet sent, then mark it sent.
- * Returns the ticket, or null when there is nothing new.
+ * Kitchen rules. Every dish line sent to the kitchen is tracked on its own:
+ *
+ *   dish = { id, lineId, name, qty, note, price, orderedAt, completedAt }
+ *
+ * `orderedAt` is when it was sent; `completedAt` is when the kitchen marked it ready (null while
+ * cooking). "2× Burger" sent together is one dish. Dishes live on their order (`order.dishes`).
+ * When every dish of an order is ready and nothing is waiting to be sent, the order completes.
  */
-export function createTicket(data, order, now = Date.now()) {
-  const lines = order.lines
+import { DISH_LATE_MINUTES, DISH_WARN_MINUTES } from '../config.js';
+import { uid } from '../utils/id.js';
+import { completeOrder, reopenOrder, unsentCount } from './orders.js';
+
+export const dishesOf = (order) => order.dishes || [];
+export const pendingDishes = (order) => dishesOf(order).filter((d) => !d.completedAt);
+export const isInKitchen = (order) => pendingDishes(order).length > 0;
+export const dishDuration = (d) => (d.completedAt && d.orderedAt ? d.completedAt - d.orderedAt : null);
+const findDish = (order, dishId) => dishesOf(order).find((d) => d.id === dishId);
+
+/** Send everything not yet sent. Each line becomes one dish. Returns the new dishes. */
+export function sendToKitchen(order, now = Date.now()) {
+  const fresh = order.lines
     .filter((l) => l.qty > l.sent)
-    .map((l) => ({ name: l.name, qty: l.qty - l.sent, note: l.note }));
-  if (!lines.length) return null;
-  const ticket = {
-    id: uid(),
-    orderId: order.id,
-    no: order.no,
-    label: orderLabel(order),
-    lines,
-    createdAt: now,
-    done: false,
-  };
-  data.tickets.push(ticket);
+    .map((l) => ({
+      id: uid(),
+      lineId: l.id,
+      name: l.name,
+      qty: l.qty - l.sent,
+      note: l.note,
+      price: l.price,
+      orderedAt: now,
+      completedAt: null,
+    }));
+  if (!fresh.length) return [];
+  order.dishes = [...dishesOf(order), ...fresh];
   order.lines.forEach((l) => {
     l.sent = l.qty;
   });
-  return ticket;
+  return fresh;
 }
 
-const findOrder = (data, ticket) => data.orders.find((o) => o.id === ticket.orderId);
+/** True when marking `dish` ready will complete its order. */
+export function completesOrder(order, dish) {
+  if (order.status !== 'open' || dish.completedAt) return false;
+  return pendingDishes(order).every((d) => d === dish) && unsentCount(order) === 0;
+}
 
-/** Open tickets for an order. */
-export const pendingTickets = (data, orderId) => data.tickets.filter((t) => t.orderId === orderId && !t.done);
+/** Complete the order if the kitchen has nothing left for it. Returns true if it completed. */
+export function completeIfDone(order, now = Date.now()) {
+  if (order.status !== 'open' || !dishesOf(order).length) return false;
+  if (isInKitchen(order) || unsentCount(order) > 0) return false;
+  completeOrder(order, now);
+  return true;
+}
+
+/** Mark one dish ready. Returns { dish, completed } where `completed` says the order finished. */
+export function markDishReady(order, dishId, now = Date.now()) {
+  const dish = findDish(order, dishId);
+  if (!dish || dish.completedAt || order.status !== 'open') return { dish: null, completed: false };
+  dish.completedAt = now;
+  return { dish, completed: completeIfDone(order, now) };
+}
+
+/** Put a ready dish back in the kitchen. Reopens its order if that order had completed. */
+export function recallDish(order, dishId) {
+  const dish = findDish(order, dishId);
+  if (!dish || order.status === 'void') return { dish: null, reopened: false };
+  dish.completedAt = null;
+  if (order.status !== 'completed') return { dish, reopened: false };
+  reopenOrder(order);
+  return { dish, reopened: true };
+}
 
 /**
- * True when marking this ticket ready will complete its order:
- * the order is open, this is its last open ticket, and nothing is waiting to be sent.
+ * Take `count` portions of a line off the kitchen screen, newest first, when staff remove
+ * items that were already sent. Dishes already marked ready are left alone (they were served).
  */
-export function completesOrder(data, ticket) {
-  const order = findOrder(data, ticket);
-  if (!order || order.status !== 'open' || ticket.done) return false;
-  return pendingTickets(data, order.id).every((t) => t === ticket) && unsentCount(order) === 0;
+export function cancelPending(order, lineId, count) {
+  let left = count;
+  const dishes = dishesOf(order);
+  for (let i = dishes.length - 1; i >= 0 && left > 0; i--) {
+    const d = dishes[i];
+    if (d.lineId !== lineId || d.completedAt) continue;
+    const take = Math.min(d.qty, left);
+    d.qty -= take;
+    left -= take;
+  }
+  order.dishes = dishes.filter((d) => d.qty > 0);
+  return count - left;
 }
 
-/** Mark a ticket ready. Returns the order if this completed it, otherwise null. */
-export function markTicketReady(data, ticket, now = Date.now()) {
-  const willComplete = completesOrder(data, ticket);
-  ticket.done = true;
-  ticket.doneAt = now;
-  if (!willComplete) return null;
-  const order = findOrder(data, ticket);
-  completeOrder(order, now);
-  return order;
+/** Open orders with dishes cooking, each with its dishes oldest first; oldest order first. */
+export function kitchenQueue(data) {
+  return data.orders
+    .filter((o) => o.status === 'open')
+    .map((order) => ({ order, dishes: pendingDishes(order).sort((a, b) => a.orderedAt - b.orderedAt) }))
+    .filter((g) => g.dishes.length)
+    .sort((a, b) => a.dishes[0].orderedAt - b.dishes[0].orderedAt);
 }
 
-/** Send a ticket back to the kitchen. Returns the order if it was reopened, otherwise null. */
-export function recallTicket(data, ticket) {
-  ticket.done = false;
-  ticket.doneAt = null;
-  const order = findOrder(data, ticket);
-  if (!order || order.status !== 'completed') return null;
-  reopenOrder(order);
-  return order;
+export const pendingDishCount = (data) => kitchenQueue(data).reduce((n, g) => n + g.dishes.length, 0);
+
+/** Dishes marked ready since `since` (not on voided orders), newest first. */
+export function readyDishes(data, since) {
+  const out = [];
+  for (const order of data.orders) {
+    if (order.status === 'void') continue;
+    for (const dish of dishesOf(order))
+      if (dish.completedAt && dish.completedAt >= since) out.push({ order, dish });
+  }
+  return out.sort((a, b) => b.dish.completedAt - a.dish.completedAt);
 }
 
-/** Order ids that already have a pending ticket count as "in kitchen". */
-export const isInKitchen = (data, orderId) => pendingTickets(data, orderId).length > 0;
-
-export function pruneTickets(data, now = Date.now()) {
-  data.tickets = data.tickets.filter((t) => !t.done || now - (t.doneAt || t.createdAt) < DONE_TICKET_TTL_MS);
-}
-
-/** '', 'mid', 'late' or 'done' for colouring a ticket by age. */
-export function ticketUrgency(ticket, now = Date.now()) {
-  if (ticket.done) return 'done';
-  const mins = (now - ticket.createdAt) / 60000;
-  if (mins > TICKET_LATE_MINUTES) return 'late';
-  if (mins > TICKET_WARN_MINUTES) return 'mid';
+/** '', 'mid', 'late' or 'done' for colouring a dish by how long it has been cooking. */
+export function dishUrgency(dish, now = Date.now()) {
+  if (dish.completedAt) return 'done';
+  const mins = (now - dish.orderedAt) / 60000;
+  if (mins > DISH_LATE_MINUTES) return 'late';
+  if (mins > DISH_WARN_MINUTES) return 'mid';
   return '';
+}
+
+/** Per-line kitchen status for the order screen. */
+export function lineKitchenStatus(order, line) {
+  const dishes = dishesOf(order).filter((d) => d.lineId === line.id);
+  const sum = (list) => list.reduce((n, d) => n + d.qty, 0);
+  return {
+    unsent: Math.max(0, line.qty - line.sent),
+    cooking: sum(dishes.filter((d) => !d.completedAt)),
+    ready: sum(dishes.filter((d) => d.completedAt)),
+  };
 }

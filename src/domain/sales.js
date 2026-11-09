@@ -1,14 +1,31 @@
-import { orderDuration, orderLabel } from './orders.js';
-
 /**
- * Summarise orders completed in [start, end).
- * `orders` lists completed and voided orders (newest first); figures count completed orders only.
+ * Sales are counted per dish: a dish is a sale when the kitchen marks it ready.
+ * Dishes on voided orders are excluded.
  */
-export function summarizeSales(allOrders, [start, end]) {
+import { dishDuration, dishesOf } from './kitchen.js';
+import { orderLabel } from './orders.js';
+
+/** Every dish completed in [start, end), newest first, with its order's number and label. */
+export function completedDishes(allOrders, [start, end]) {
+  const out = [];
+  for (const order of allOrders) {
+    if (order.status === 'void') continue;
+    for (const d of dishesOf(order)) {
+      if (d.completedAt && d.completedAt >= start && d.completedAt < end) {
+        out.push({ ...d, orderId: order.id, orderNo: order.no, orderLabel: orderLabel(order) });
+      }
+    }
+  }
+  return out.sort((a, b) => b.completedAt - a.completedAt);
+}
+
+export function summarizeSales(allOrders, range) {
+  const [start, end] = range;
+  const dishes = completedDishes(allOrders, range);
+  // Bills that finished (or were voided after finishing) on this day, for reprint / void.
   const orders = allOrders
     .filter((o) => o.completedAt && o.completedAt >= start && o.completedAt < end)
     .sort((a, b) => b.completedAt - a.completedAt);
-  const completed = orders.filter((o) => o.status === 'completed');
 
   let total = 0;
   let itemsSold = 0;
@@ -16,31 +33,31 @@ export function summarizeSales(allOrders, [start, end]) {
   let durationCount = 0;
   const byHour = {};
   const items = {};
-  for (const o of completed) {
-    total += o.totals.total;
-    const d = orderDuration(o);
-    if (d != null) {
-      durationSum += d;
+  for (const d of dishes) {
+    const amount = d.price * d.qty;
+    total += amount;
+    itemsSold += d.qty;
+    const took = dishDuration(d);
+    if (took != null) {
+      durationSum += took;
       durationCount += 1;
     }
-    const h = new Date(o.completedAt).getHours();
-    byHour[h] = (byHour[h] || 0) + o.totals.total;
-    for (const l of o.lines) {
-      itemsSold += l.qty;
-      const it = (items[l.name] ||= { name: l.name, qty: 0, revenue: 0 });
-      it.qty += l.qty;
-      it.revenue += l.qty * l.price;
-    }
+    const h = new Date(d.completedAt).getHours();
+    byHour[h] = (byHour[h] || 0) + amount;
+    const it = (items[d.name] ||= { name: d.name, qty: 0, revenue: 0 });
+    it.qty += d.qty;
+    it.revenue += amount;
   }
 
   return {
+    dishes,
     orders,
-    count: completed.length,
     total,
+    dishCount: dishes.length,
     itemsSold,
-    average: completed.length ? Math.round(total / completed.length) : 0,
-    /** Average ordered → completed time in ms, or null when there is nothing to average. */
-    averageDuration: durationCount ? Math.round(durationSum / durationCount) : null,
+    tablesServed: orders.filter((o) => o.status === 'completed').length,
+    /** Average sent → ready time per dish in ms, or null when nothing was completed. */
+    averageDishTime: durationCount ? Math.round(durationSum / durationCount) : null,
     byHour,
     topItems: Object.values(items)
       .sort((a, b) => b.revenue - a.revenue)
@@ -58,21 +75,26 @@ export function chartHours(byHour) {
 }
 
 const dec = (c) => (c / 100).toFixed(2);
+const stamp = (ts) => (ts ? new Date(ts).toLocaleString() : '');
 
-export function salesCsvRows(orders) {
-  const header = ['Order', 'Order type', 'Ordered at', 'Completed at', 'Minutes', 'Items', 'Total', 'Status'];
-  const stamp = (ts) => (ts ? new Date(ts).toLocaleString() : '');
-  const rows = [...orders]
+/** One CSV row per dish: the order log. */
+export function dishCsvRows(dishes) {
+  const header = ['Order', 'Table', 'Dish', 'Qty', 'Note', 'Ordered at', 'Completed at', 'Minutes', 'Amount'];
+  const rows = [...dishes]
     .sort((a, b) => a.completedAt - b.completedAt)
-    .map((o) => [
-      o.no,
-      orderLabel(o),
-      stamp(o.createdAt),
-      stamp(o.completedAt),
-      orderDuration(o) == null ? '' : Math.round(orderDuration(o) / 60000),
-      o.lines.map((l) => `${l.qty}x ${l.name}`).join('; '),
-      dec(o.totals.total),
-      o.status,
-    ]);
+    .map((d) => {
+      const took = dishDuration(d);
+      return [
+        d.orderNo,
+        d.orderLabel,
+        d.name,
+        d.qty,
+        d.note || '',
+        stamp(d.orderedAt),
+        stamp(d.completedAt),
+        took == null ? '' : Math.round(took / 60000),
+        dec(d.price * d.qty),
+      ];
+    });
   return [header, ...rows];
 }

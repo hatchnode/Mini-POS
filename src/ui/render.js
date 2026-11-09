@@ -1,3 +1,4 @@
+import { pendingDishCount } from '../domain/kitchen.js';
 import { store } from '../state/store.js';
 import { $, $$ } from '../utils/dom.js';
 import { renderKitchenView } from '../views/kitchenView.js';
@@ -25,7 +26,7 @@ export function render() {
   document.title = `${data.settings.name} · Mini-POS`;
   $('#brand-name').textContent = data.settings.name;
   $$('nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === ui.view));
-  const waiting = data.tickets.filter((t) => !t.done).length;
+  const waiting = pendingDishCount(data);
   const badge = $('#kitchen-badge');
   badge.textContent = waiting;
   badge.hidden = !waiting;

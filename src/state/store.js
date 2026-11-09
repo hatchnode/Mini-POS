@@ -1,20 +1,17 @@
 import { createSeedData, migrate } from './schema.js';
 import { isStorageAvailable, readStoredData, writeStoredData } from './storage.js';
-import { pruneTickets } from '../domain/kitchen.js';
 import { todayStr } from '../utils/date.js';
 
 function loadInitialData(storageOK) {
   const raw = storageOK ? readStoredData() : null;
-  const data = raw ? migrate(raw) : createSeedData();
-  pruneTickets(data);
-  return data;
+  return raw ? migrate(raw) : createSeedData();
 }
 
 const storageOK = isStorageAvailable();
 
 /**
  * Single source of truth.
- * - `data` is persisted (menu, orders, tickets, settings).
+ * - `data` is persisted (menu, orders with their dishes, settings).
  * - `ui` is screen state and is never saved.
  */
 export const store = {
@@ -28,7 +25,7 @@ export const store = {
     category: 'all',
     search: '',
     salesDate: todayStr(),
-    showReadyTickets: false,
+    showReadyDishes: false,
   },
 };
 

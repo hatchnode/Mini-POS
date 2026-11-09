@@ -37,7 +37,6 @@ export function createSeedData() {
     categories: SAMPLE_CATEGORIES.map((c) => ({ ...c })),
     items: SAMPLE_ITEMS.map(([name, price, catId]) => ({ id: uid(), name, price, catId, active: true })),
     orders: [],
-    tickets: [],
     seq: 1,
   };
 }
@@ -54,6 +53,59 @@ function migrateOrder(order) {
   return o;
 }
 
+/**
+ * v4: kitchen work is tracked per dish on each order instead of as separate tickets.
+ * Each old ticket line becomes a dish (sent time = ticket time, ready time = when the ticket was
+ * marked done). Old tickets for finished orders may have been pruned, so anything else on a
+ * completed or voided order is recorded as served when the order finished.
+ */
+function migrateDishes(order, tickets) {
+  if (Array.isArray(order.dishes)) return order;
+  const lines = order.lines || [];
+  const findLine = (name, note) =>
+    lines.find((l) => l.name === name && (l.note || '') === (note || '')) ||
+    lines.find((l) => l.name === name);
+
+  const dishes = tickets
+    .filter((t) => t.orderId === order.id)
+    .flatMap((t) =>
+      (t.lines || []).map((tl) => {
+        const line = findLine(tl.name, tl.note);
+        return {
+          id: uid(),
+          lineId: line?.id ?? null,
+          name: tl.name,
+          qty: tl.qty,
+          note: tl.note || '',
+          price: line?.price ?? 0,
+          orderedAt: t.createdAt,
+          completedAt: t.done ? t.doneAt || t.createdAt : null,
+        };
+      }),
+    );
+
+  if (order.status !== 'open') {
+    const finishedAt = order.completedAt ?? order.voidedAt ?? order.createdAt;
+    for (const l of lines) {
+      const covered = dishes.filter((d) => d.lineId === l.id).reduce((n, d) => n + d.qty, 0);
+      const missing = l.qty - covered;
+      if (missing > 0) {
+        dishes.push({
+          id: uid(),
+          lineId: l.id,
+          name: l.name,
+          qty: missing,
+          note: l.note || '',
+          price: l.price,
+          orderedAt: order.createdAt ?? finishedAt,
+          completedAt: finishedAt,
+        });
+      }
+    }
+  }
+  return { ...order, dishes };
+}
+
 /** Bring stored or imported data up to the current schema. */
 export function migrate(raw) {
   const data = { ...raw };
@@ -62,8 +114,11 @@ export function migrate(raw) {
   data.settings = settings;
   data.categories = Array.isArray(raw.categories) ? raw.categories : [];
   data.items = Array.isArray(raw.items) ? raw.items : [];
-  data.orders = Array.isArray(raw.orders) ? raw.orders.map(migrateOrder) : [];
-  data.tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
+  const tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
+  data.orders = Array.isArray(raw.orders)
+    ? raw.orders.map((o) => migrateDishes(migrateOrder(o), tickets))
+    : [];
+  delete data.tickets; // v4: replaced by order.dishes
   data.seq = Number(raw.seq) || 1;
   data.version = SCHEMA_VERSION;
   return data;
