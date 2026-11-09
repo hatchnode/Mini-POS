@@ -1,5 +1,5 @@
 import { markDishReady, recallDish } from '../domain/kitchen.js';
-import { orderLabel } from '../domain/orders.js';
+import { balanceDue, orderLabel } from '../domain/orders.js';
 import { save, store } from '../state/store.js';
 import { money } from '../ui/format.js';
 import { render } from '../ui/render.js';
@@ -12,16 +12,17 @@ export const click = {
   markDishReady(el) {
     const order = findOrder(el);
     if (!order) return;
-    const { dish, completed } = markDishReady(order, el.dataset.id);
+    const { dish, served, completed } = markDishReady(order, el.dataset.id);
     if (!dish) return;
     if (completed && store.ui.currentOrderId === order.id) store.ui.currentOrderId = null;
     save();
     render();
-    toast(
-      completed
-        ? `${orderLabel(order)} #${order.no} completed · ${money(order.totals.total)}`
-        : `${dish.qty}× ${dish.name} ready`,
-    );
+    let message = `${dish.qty}× ${dish.name} ready`;
+    if (completed)
+      message = `${orderLabel(order)} #${order.no} served and paid.${order.table ? ' Table is free.' : ''}`;
+    else if (served)
+      message = `${orderLabel(order)} #${order.no} served. Awaiting payment of ${money(balanceDue(order))}.`;
+    toast(message, 2600);
   },
   recallDish(el) {
     const order = findOrder(el);

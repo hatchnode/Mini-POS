@@ -108,3 +108,22 @@ table.t {
     grid-column: 1 / -1;
   }
 }
+
+/* payment attention */
+.kpi.warn {
+  border-color: #f3b4b4;
+  background: var(--bad-soft);
+}
+.kpi.warn .v {
+  color: var(--bad);
+}
+.panel.attention {
+  border-color: #f3b4b4;
+}
+.panel.attention .panel-h {
+  background: var(--bad-soft);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.panel.attention h2 {
+  color: var(--bad);
+}

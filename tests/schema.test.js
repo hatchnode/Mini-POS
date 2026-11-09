@@ -18,11 +18,12 @@ describe('schema', () => {
     expect(d.items.length).toBeGreaterThan(10);
     expect(d.settings).not.toHaveProperty('taxRate');
     expect(d).not.toHaveProperty('tickets');
+    expect(d.tables).toHaveLength(12);
   });
 
   it('migrates v1 data by dropping the tax setting and filling defaults', () => {
     const d = migrate({ version: 1, settings: { name: 'Cafe', taxRate: 8 }, items: [], categories: [] });
-    expect(d.version).toBe(4);
+    expect(d.version).toBe(6);
     expect(d.settings.name).toBe('Cafe');
     expect(d.settings).not.toHaveProperty('taxRate');
     expect(d.orders).toEqual([]);
@@ -39,10 +40,11 @@ describe('schema', () => {
         { id: 'c', status: 'open', lines: [] },
       ],
     });
-    expect(d.orders.map((o) => [o.status, o.completedAt, 'paidAt' in o])).toEqual([
-      ['completed', 100, false],
-      ['void', 200, false],
-      ['open', undefined, false],
+    // v3 renames paid → completed; v6 then records those as paid at completion.
+    expect(d.orders.map((o) => [o.status, o.completedAt, o.paidAt])).toEqual([
+      ['completed', 100, 100],
+      ['void', 200, undefined],
+      ['open', undefined, undefined],
     ]);
   });
 
@@ -106,6 +108,55 @@ describe('schema', () => {
       orders: [{ id: 'o', status: 'open', lines: [], dishes }],
     });
     expect(d.orders[0].dishes).toEqual(dishes);
+  });
+
+  it('turns the old table count into a list of tables, and order table numbers into ids', () => {
+    const d = migrate({
+      settings: { name: 'Cafe', tables: 3 },
+      items: [],
+      categories: [],
+      orders: [
+        { id: 'a', status: 'open', table: 2, lines: [], dishes: [] },
+        { id: 'b', status: 'open', table: null, lines: [], dishes: [] },
+      ],
+    });
+    expect(d.tables).toEqual([
+      { id: 't1', name: '1' },
+      { id: 't2', name: '2' },
+      { id: 't3', name: '3' },
+    ]);
+    expect(d.settings).not.toHaveProperty('tables');
+    expect(d.orders[0]).toMatchObject({ table: 't2', tableName: '2' });
+    expect(d.orders[1].table).toBeNull();
+  });
+
+  it('gives data with no table setting the default 12 tables', () => {
+    expect(migrate({ items: [], categories: [] }).tables).toHaveLength(12);
+  });
+
+  it('keeps an existing table list', () => {
+    const tables = [{ id: 'x', name: 'Patio' }];
+    expect(migrate({ items: [], categories: [], tables }).tables).toEqual(tables);
+  });
+
+  it('treats orders completed before payment tracking as paid in full', () => {
+    const d = migrate({
+      version: 5,
+      items: [],
+      categories: [],
+      tables: [],
+      orders: [
+        {
+          id: 'a',
+          status: 'completed',
+          completedAt: 500,
+          lines: [{ price: 450, qty: 2 }],
+          totals: { subtotal: 900, total: 900 },
+          dishes: [],
+        },
+      ],
+    });
+    expect(d.orders[0]).toMatchObject({ paidAt: 500, paidAmount: 900 });
   });
 
   it('recognises backups', () => {

@@ -1,4 +1,6 @@
-import { DEFAULT_SETTINGS, SCHEMA_VERSION } from '../config.js';
+import { DEFAULT_SETTINGS, DEFAULT_TABLE_COUNT, SCHEMA_VERSION } from '../config.js';
+import { numberedTables } from '../domain/tables.js';
+import { calcTotals } from '../domain/orders.js';
 import { uid } from '../utils/id.js';
 
 const SAMPLE_CATEGORIES = [
@@ -36,6 +38,7 @@ export function createSeedData() {
     settings: { ...DEFAULT_SETTINGS },
     categories: SAMPLE_CATEGORIES.map((c) => ({ ...c })),
     items: SAMPLE_ITEMS.map(([name, price, catId]) => ({ id: uid(), name, price, catId, active: true })),
+    tables: numberedTables(DEFAULT_TABLE_COUNT),
     orders: [],
     seq: 1,
   };
@@ -106,17 +109,42 @@ function migrateDishes(order, tickets) {
   return { ...order, dishes };
 }
 
+/**
+ * v5: tables are a managed list instead of a count. The old "number of tables" setting becomes
+ * tables 1..n, and orders switch from a table number to that table's id plus its name.
+ */
+function migrateTable(order) {
+  if (typeof order.table !== 'number') return order;
+  return { ...order, table: `t${order.table}`, tableName: String(order.table) };
+}
+
+/**
+ * v6: bills are paid explicitly. Orders completed before this existed are treated as paid at
+ * completion, so past sales stay the same.
+ */
+function migratePayment(order) {
+  if (order.status !== 'completed' || order.paidAt) return order;
+  return {
+    ...order,
+    paidAt: order.completedAt,
+    paidAmount: order.totals?.total ?? calcTotals({ lines: order.lines || [] }).total,
+  };
+}
+
 /** Bring stored or imported data up to the current schema. */
 export function migrate(raw) {
   const data = { ...raw };
   const settings = { ...DEFAULT_SETTINGS, ...(raw.settings || {}) };
   delete settings.taxRate; // v2: tax removed
+  const tableCount = Number.isInteger(settings.tables) ? settings.tables : DEFAULT_TABLE_COUNT;
+  delete settings.tables; // v5: replaced by data.tables
   data.settings = settings;
+  data.tables = Array.isArray(raw.tables) ? raw.tables : numberedTables(tableCount);
   data.categories = Array.isArray(raw.categories) ? raw.categories : [];
   data.items = Array.isArray(raw.items) ? raw.items : [];
   const tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
   data.orders = Array.isArray(raw.orders)
-    ? raw.orders.map((o) => migrateDishes(migrateOrder(o), tickets))
+    ? raw.orders.map((o) => migratePayment(migrateTable(migrateDishes(migrateOrder(o), tickets))))
     : [];
   delete data.tickets; // v4: replaced by order.dishes
   data.seq = Number(raw.seq) || 1;

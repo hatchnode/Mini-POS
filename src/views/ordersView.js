@@ -1,6 +1,16 @@
-import { isInKitchen, lineKitchenStatus } from '../domain/kitchen.js';
-import { calcTotals, itemCount, openOrders, orderLabel, unsentCount } from '../domain/orders.js';
+import { isInKitchen, isServed, lineKitchenStatus } from '../domain/kitchen.js';
+import {
+  balanceDue,
+  calcTotals,
+  isPaid,
+  itemCount,
+  openOrders,
+  orderLabel,
+  unsentCount,
+} from '../domain/orders.js';
+import { findTable, tableLabel } from '../domain/tables.js';
 import { currentOrder, store } from '../state/store.js';
+import { alarmingOrderIds } from '../ui/alarm.js';
 import { categoryColor, categoryIndex, money } from '../ui/format.js';
 import { timeStr } from '../utils/date.js';
 import { esc, plural } from '../utils/text.js';
@@ -22,36 +32,75 @@ export function renderItemsGrid() {
     .join('');
 }
 
+function tableTile(t, firstOpen, order, editing, alarming) {
+  const { ui } = store;
+  const o = firstOpen.get(t.id);
+  const selected = !editing && (order?.table === t.id || ui.pendingTable === t.id);
+  const unpaid = o && isServed(o) && !isPaid(o);
+  let sub = 'free';
+  if (editing) sub = 'rename';
+  else if (unpaid) sub = `unpaid ${money(balanceDue(o))}`;
+  else if (o && isPaid(o)) sub = 'paid';
+  else if (o) sub = money(calcTotals(o).total);
+  const cls = [
+    'tbl',
+    o ? 'busy' : '',
+    unpaid ? 'unpaid' : '',
+    o && alarming.has(o.id) ? 'alarm' : '',
+    selected ? 'sel' : '',
+    editing ? 'editing' : '',
+    t.name.length > 3 ? 'long' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return `<button class="${cls}" data-act="${editing ? 'editTable' : 'selectTable'}" data-id="${t.id}" aria-label="${esc(tableLabel(t.name))}">
+    <span class="tbl-name">${esc(t.name)}</span><small>${sub}</small></button>`;
+}
+
 function tablesPanel(order, open) {
   const { data, ui } = store;
-  const count = data.settings.tables;
-  let tables = '';
-  for (let n = 1; n <= count; n++) {
-    const o = open.find((x) => x.table === n);
-    const selected = order?.table === n || ui.pendingTable === n;
-    tables += `<button class="tbl ${o ? 'busy' : ''} ${selected ? 'sel' : ''}" data-act="selectTable" data-n="${n}" aria-label="Table ${n}">
-      ${n}<small>${o ? money(calcTotals(o).total) : 'free'}</small></button>`;
-  }
-  // Takeaways, tables beyond the current table count, and a second open order on an occupied
-  // table (e.g. a recalled order) are listed separately so none is hidden.
-  const firstOnTable = new Map();
+  const editing = ui.editTables;
+  const known = new Set(data.tables.map((t) => t.id));
+  // The first open order on each table owns its tile. Takeaways, orders on removed tables and a
+  // second order on an occupied table (e.g. a recalled one) are listed below so none is hidden.
+  const firstOpen = new Map();
   open.forEach((o) => {
-    if (o.table != null && !firstOnTable.has(o.table)) firstOnTable.set(o.table, o);
+    if (o.table != null && !firstOpen.has(o.table)) firstOpen.set(o.table, o);
   });
-  const others = open.filter((o) => o.table == null || o.table > count || firstOnTable.get(o.table) !== o);
+  const alarming = alarmingOrderIds();
+  const others = open.filter((o) => o.table == null || !known.has(o.table) || firstOpen.get(o.table) !== o);
   const otherList = others
     .map(
       (o) =>
-        `<button class="orow ${order?.id === o.id ? 'sel' : ''}" data-act="openOrder" data-id="${o.id}">
-          <span>${esc(orderLabel(o))} <span class="muted">#${o.no}</span></span><b>${money(calcTotals(o).total)}</b></button>`,
+        `<button class="orow ${order?.id === o.id ? 'sel' : ''} ${isServed(o) && !isPaid(o) ? 'unpaid' : ''} ${alarming.has(o.id) ? 'alarm' : ''}" data-act="openOrder" data-id="${o.id}">
+          <span>${esc(orderLabel(o))} <span class="muted">#${o.no}</span>${isPaid(o) ? ' <span class="pill paid">paid</span>' : ''}</span><b>${money(calcTotals(o).total)}</b></button>`,
     )
     .join('');
 
+  const tiles = data.tables.map((t) => tableTile(t, firstOpen, order, editing, alarming)).join('');
+  const addTile = editing
+    ? '<button class="tbl add-tbl" data-act="addTable">+<small>Add table</small></button>'
+    : '';
+  const grid =
+    tiles || addTile
+      ? `<div class="tables">${tiles}${addTile}</div>`
+      : '<div class="muted small">No tables yet. Tap <b>Edit tables</b> to add some.</div>';
+
   return `<section class="panel tables-panel">
-    <div class="panel-h"><h2>Tables</h2><span class="muted small">${open.length} open</span></div>
+    <div class="panel-h">
+      <h2>Tables</h2>
+      <div class="inrow"><span class="muted small">${open.length} open</span>
+        <button class="small ${editing ? 'btn-primary' : ''}" data-act="toggleEditTables">${editing ? 'Done' : 'Edit tables'}</button></div>
+    </div>
     <div class="panel-b scroll" data-keep="tables">
-      ${count ? `<div class="tables">${tables}</div>` : ''}
-      <button class="take-btn ${ui.pendingTable === 'take' ? 'sel' : ''}" data-act="newTakeaway">+ New takeaway</button>
+      ${editing ? '<div class="edit-hint">Tap a table to rename or remove it, or tap <b>+</b> to add one.</div>' : ''}
+      ${grid}
+      ${
+        editing
+          ? ''
+          : `<button class="take-btn ${ui.pendingTable === 'take' ? 'sel' : ''}" data-act="newTakeaway">+ New takeaway</button>
+             <div class="muted small take-hint">For food to go: no table needed.</div>`
+      }
       ${others.length ? `<div class="sub">Takeaway &amp; other</div><div class="olist">${otherList}</div>` : ''}
     </div>
   </section>`;
@@ -105,22 +154,50 @@ function lineRow(order, l) {
 function ticketPanel(order) {
   if (!order) {
     const p = store.ui.pendingTable;
-    const title = p == null ? 'Ticket' : p === 'take' ? 'New takeaway' : `Table ${p}`;
-    const hint = p == null ? 'Select a table or start a takeaway.' : 'Tap menu items to start this order.';
-    return `<div class="panel-h"><div class="tk-title">${title}</div></div><div class="scroll empty">${hint}</div>`;
+    const table = p && p !== 'take' ? findTable(store.data, p) : null;
+    let title = 'Ticket';
+    let hint = 'Select a table or start a takeaway.';
+    if (p === 'take') {
+      title = 'New takeaway';
+      hint = 'Tap menu items to add them to this takeaway order.';
+    } else if (table) {
+      title = tableLabel(table.name);
+      hint = 'Tap menu items to start this order.';
+    }
+    return `<div class="panel-h"><div class="tk-title">${esc(title)}</div></div><div class="scroll empty ${p ? 'ready' : ''}">${hint}</div>`;
   }
   const t = calcTotals(order);
   const unsent = unsentCount(order);
   const hasLines = order.lines.length > 0;
   const inKitchen = isInKitchen(order);
+  const served = isServed(order);
+  const paid = isPaid(order);
+  const due = balanceDue(order);
   let status = '';
-  if (inKitchen && !unsent) status = 'In the kitchen. The table frees when every dish is marked ready.';
-  else if (inKitchen) status = 'Some dishes are in the kitchen. Send the new ones too.';
+  let statusCls = '';
+  if (served && !paid) {
+    status = `All dishes served. Take payment of ${money(due)} before the customer leaves.`;
+    statusCls = 'alert';
+  } else if (paid && inKitchen) {
+    status = `Paid. ${order.table ? 'The table frees' : 'The order completes'} when every dish is served.`;
+    statusCls = 'ok';
+  } else if (paid) {
+    status = 'Paid. Send the dishes to the kitchen.';
+    statusCls = 'ok';
+  } else if (inKitchen && !unsent) {
+    status = 'In the kitchen. You can take payment any time.';
+  } else if (inKitchen) {
+    status = 'Some dishes are in the kitchen. Send the new ones too.';
+  } else if (order.paidAt && due) {
+    status = `Items were added after payment. ${money(due)} still to pay.`;
+    statusCls = 'alert';
+  }
+  const canWalkout = !paid && order.dishes?.length;
 
   return `<div class="panel-h">
       <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}</div></div>
       <div class="inrow">
-        ${store.data.settings.tables ? '<button class="small" data-act="moveOrder">Move</button>' : ''}
+        ${store.data.tables.length ? '<button class="small" data-act="moveOrder">Move</button>' : ''}
         <button class="small btn-danger" data-act="voidOrder">Void</button>
       </div>
     </div>
@@ -129,9 +206,13 @@ function ticketPanel(order) {
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>
     </div>
     <div class="actions">
-      ${status ? `<div class="status-note">${status}</div>` : ''}
-      <button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>
-      <button data-act="printBill" ${hasLines ? '' : 'disabled'}>Print bill</button>
+      ${status ? `<div class="status-note ${statusCls}">${status}${alarmingOrderIds().has(order.id) ? `<div><button class="small" data-act="snoozeAlarm" data-id="${order.id}">Customer still here · snooze alarm</button></div>` : ''}</div>` : ''}
+      ${unsent || !served ? `<button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>` : ''}
+      ${!paid && hasLines ? `<button class="btn-ok wide" data-act="markPaid" data-id="${order.id}">Mark paid ${money(due)}</button>` : ''}
+      <div class="action-row">
+        <button data-act="printBill" ${hasLines ? '' : 'disabled'}>Print bill</button>
+        ${canWalkout ? `<button class="btn-danger" data-act="markWalkout" data-id="${order.id}">Walked out</button>` : ''}
+      </div>
     </div>`;
 }
 

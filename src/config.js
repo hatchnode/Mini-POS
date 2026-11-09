@@ -1,15 +1,23 @@
 /** App-wide constants. Change these to tune behaviour without touching logic. */
 
 export const STORAGE_KEY = 'mini-pos-v1';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 6;
 
-export const MAX_TABLES = 60;
+export const MAX_TABLES = 100;
+/** Tables in a fresh install. */
+export const DEFAULT_TABLE_COUNT = 12;
 
 /** Dishes in the kitchen turn amber / red after this many minutes. */
 export const DISH_WARN_MINUTES = 8;
 export const DISH_LATE_MINUTES = 15;
 /** How far back the kitchen's "ready" list reaches. */
 export const READY_LIST_HOURS = 12;
+
+/** Unpaid alarm: how long Snooze silences a table, and how often the sound repeats. */
+export const ALARM_SNOOZE_MINUTES = 10;
+export const ALARM_REPEAT_MINUTES = 3;
+/** How often the app re-checks alarms and timers. */
+export const TICK_MS = 15000;
 
 export const NOTE_PRESETS = [
   'No onions',
@@ -39,6 +47,8 @@ export const DEFAULT_SETTINGS = {
   address: '',
   phone: '',
   currency: '$',
-  tables: 12,
   footer: 'Thank you! Come again.',
+  /** Alarm when a served table is still unpaid after this many minutes (0 = off). */
+  unpaidAlarmMinutes: 5,
+  alarmSound: true,
 };

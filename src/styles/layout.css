@@ -144,3 +144,64 @@ main {
     flex-basis: 100%;
   }
 }
+
+/* unpaid alarm banner, on every screen */
+.alarm-banner {
+  position: sticky;
+  top: 56px;
+  z-index: 4;
+  background: var(--bad);
+  color: #fff;
+  padding: 8px 16px;
+  display: grid;
+  gap: 6px;
+  animation: alarm-pulse 1.6s ease-in-out infinite;
+}
+.alarm-title {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+}
+.alarm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 15px;
+}
+.alarm-acts {
+  display: flex;
+  gap: 6px;
+}
+.alarm-acts button {
+  background: #fff;
+  color: var(--bad);
+  border-color: #fff;
+  font-weight: 600;
+}
+.alarm-more {
+  font-size: 13px;
+  opacity: 0.9;
+}
+@keyframes alarm-pulse {
+  0%,
+  100% {
+    background: var(--bad);
+  }
+  50% {
+    background: #dc2626;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alarm-banner,
+  .tbl.alarm,
+  .orow.alarm {
+    animation: none;
+  }
+}
+@media (max-width: 720px) {
+  .alarm-banner {
+    top: 92px;
+  }
+}

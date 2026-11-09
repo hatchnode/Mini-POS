@@ -4,14 +4,17 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 
 ## Features
 
-- **Tables & takeaway**: tap a table to start or reopen its order; open tables show their running total. Move an order to another table or turn it into a takeaway.
+- **Tables & takeaway**: tap a table to start or reopen its order; open tables show their running total. **New takeaway** starts an order with no table (food to go); it appears under "Takeaway & other" once you add the first item. Move an order to another table or turn it into a takeaway.
+- **Manage tables**: on the Orders screen tap **Edit tables**, then tap **+** to add a table, or tap a table to rename it (e.g. "Patio", "Bar 2") or remove it. Tables with an open order can't be removed. Finished orders keep their table name.
 - **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick presets ("No onions", "Extra spicy", …).
 - **Per-dish kitchen orders**: "Send to kitchen" turns each line into its own dish order ("2× Burger" sent together is one dish), stamped with the time it was sent. The kitchen screen groups dishes by table, and each dish has its own timer (amber after 8 minutes, red after 15) and its own **Ready** button, which records that dish's completion time. Items added later are sent as new dishes with their own times.
-- **No checkout step**: a table frees by itself when every dish on it is ready and nothing is waiting to be sent. The bill is then complete. **Recall** puts a ready dish back in the kitchen and reopens its table if needed. Removing a dish that is still cooking takes it off the kitchen screen. Prices are final, with no tax, discount or tip.
+- **Paying**: tap **Mark paid** when the customer pays, before or after eating. A bill completes, and its table frees, only when every dish is served **and** it is paid. Items added after paying show the balance still due. **Recall** puts a ready dish back in the kitchen and reopens its table if needed. Removing a dish that is still cooking takes it off the kitchen screen. Prices are final, with no tax, discount or tip.
+- **Walk-out protection**: a table whose dishes are all served but unpaid turns **red** ("unpaid $17.00") and stays occupied, and its ticket warns to take payment before the customer leaves. Sales shows an **Awaiting payment** list. If a customer leaves without paying, **Walked out** records the loss and frees the table, so it shows in Sales instead of disappearing.
+- **Unpaid alarm**: if a served table is still unpaid after a set time (5 minutes by default), its tile flashes, a red banner appears at the top of every screen (Orders, Kitchen, Sales…) with **Open** and **Customer still here** (snooze 10 minutes), and an alert sound plays, repeating every 3 minutes until it is paid. Set the minutes (0 = off) and the sound in **Settings**. The sound starts working after the first tap on the page, as browsers require.
 - **Receipts**: **Print bill** (open table) or **Receipt** (Sales) shows the receipt on screen; **Print** sends it to the printer. Laid out for 80 mm thermal printers, and works with any printer or "Save as PDF".
 - **Order times**: every dish logs when it was ordered (sent) and when the kitchen completed it. Each order line on the ticket shows how many are not sent, cooking or ready.
-- **Sales**: each dish counts as a sale when it is marked ready. For any day you see total sales, dishes completed, average dish time, tables served, sales by hour, top items, a **dish log** (ordered, completed and time taken for every dish) and the day's bills with reprint/void. Export the dish log to CSV.
-- **Menu editor** and **settings** (name, location, phone, currency symbol, number of tables, receipt footer). The bottom of every receipt shows the restaurant name, location and phone.
+- **Sales**: money counts only **paid** bills. For any day you see paid sales, bills paid, average bill, awaiting payment, walk-outs, dishes completed, average dish time, sales by hour, top items, the day's bills (paid / walked out / void, with reprint and void), and a **dish log** (ordered, completed and time taken for every dish, with its bill status). Export the dish log to CSV.
+- **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound). The bottom of every receipt shows the restaurant name, location and phone.
 - **Backups**: export everything to JSON and import it on another device.
 
 ## Getting started
@@ -36,10 +39,12 @@ npm run dev        # http://localhost:5173 with hot reload
 
 ### First run
 
-1. **Settings**: set your restaurant name, currency and number of tables.
+1. **Settings**: set your restaurant name, location, phone and currency.
+   Then on **Orders**, tap **Edit tables** to add, rename or remove tables.
 2. **Menu**: delete the sample items and add your own.
 3. **Orders**: tap a table → tap items → **Send to kitchen**.
-4. **Kitchen**: tap **Ready** on each dish as it's done. The last dish of a table shows **Ready · complete order**, which frees the table.
+4. **Kitchen**: tap **Ready** on each dish as it's done.
+5. **Pay**: tap **Mark paid** on the ticket (or in Sales → Awaiting payment). The table frees once it is served and paid.
 
 ## Deploying
 
@@ -65,12 +70,15 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
 │   │   ├── orders.js        Totals, lines, create/move/complete/void orders
+│   │   ├── alarms.js        Unpaid alarm: which served tables have waited too long, snooze
+│   │   ├── payments.js      Mark paid, walk-outs, awaiting payment, payment status
+│   │   ├── tables.js        Add, rename and remove tables; table labels
 │   │   ├── kitchen.js       Per-dish kitchen orders: send, ready, recall, cancel, queue
 │   │   └── sales.js         Daily summary, hourly chart range, CSV rows
 │   ├── views/               One render function per screen, returns HTML
-│   ├── components/          Dialogs: item note, move table
+│   ├── components/          Dialogs: item note, move table, edit table
 │   ├── actions/             Event handlers per area, merged in actions/index.js
-│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, formatting
+│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, alarm banner and sound, formatting
 │   ├── utils/               Small helpers: money, dates, text escaping, ids, files
 │   └── styles/              CSS split by area, imported via styles/index.css
 └── tests/                   Vitest unit tests for domain, schema and utils
@@ -87,7 +95,7 @@ To add a feature: put the rule in `domain/` with a test, add a handler in `actio
 
 ### Data
 
-All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, version 3 turned paid orders into completed ones when the payment step was removed, and version 4 moved kitchen tickets onto each order as per-dish records (`order.dishes`). Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
+All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, version 3 turned paid orders into completed ones when the payment step was removed, version 4 moved kitchen tickets onto each order as per-dish records (`order.dishes`), version 5 replaced the "number of tables" setting with a managed table list (`data.tables`), and version 6 added payment tracking (orders completed before it are treated as paid). Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
 
 Everything stays **on one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly. Two tabs on the same device stay in sync.
 
@@ -95,5 +103,5 @@ Everything stays **on one device**. Clearing browser data erases it, so use **Se
 
 - Single device: no sync between a front-of-house tablet and a separate kitchen screen.
 - No staff logins or PINs.
-- No payment tracking: a completed dish or table is assumed to be paid.
+- Payment is a simple paid / not paid mark: no payment method, split bills, or card-terminal integration.
 - No inventory, priced modifiers or split bills yet.

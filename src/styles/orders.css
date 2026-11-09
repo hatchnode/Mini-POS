@@ -3,8 +3,8 @@
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 370px;
   gap: 14px;
-  height: calc(100vh - 90px);
-  height: calc(100dvh - 90px);
+  height: calc(100vh - 90px - var(--alarm-h, 0px));
+  height: calc(100dvh - 90px - var(--alarm-h, 0px));
   min-height: 540px;
 }
 .pos > .panel {
@@ -296,5 +296,117 @@
   }
   .mobile-bar {
     display: flex;
+  }
+}
+
+/* table names, edit mode and takeaway */
+.tbl-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tbl.long {
+  font-size: 14px;
+}
+.tbl.editing {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+.tbl.editing small {
+  color: var(--accent);
+}
+.add-tbl {
+  border-style: dashed;
+  color: var(--accent);
+  font-size: 24px;
+}
+.add-tbl small {
+  color: var(--accent);
+}
+.edit-hint {
+  background: #fff1e8;
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.take-hint {
+  text-align: center;
+  margin-top: 4px;
+}
+.ticket-panel .empty.ready {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* payment status */
+.tbl.unpaid {
+  background: var(--bad-soft);
+  border-color: #f3b4b4;
+}
+.tbl.unpaid small {
+  color: var(--bad);
+  font-weight: 700;
+}
+.orow.unpaid {
+  background: var(--bad-soft);
+  border-color: #f3b4b4;
+}
+.status-note.alert {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: #f3b4b4;
+  font-weight: 600;
+}
+.status-note.ok {
+  background: #e8f6ec;
+  color: var(--ok);
+  border-color: #b7e2c4;
+}
+.action-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.pill.paid {
+  background: #e8f6ec;
+  color: var(--ok);
+}
+.pill.unpaid,
+.pill.served-unpaid,
+.pill.walkout {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.pill.void {
+  background: var(--bg);
+  color: var(--muted);
+}
+
+/* table flashing: served and unpaid for too long */
+.tbl.alarm,
+.orow.alarm {
+  animation: tile-alarm 1.2s ease-in-out infinite;
+}
+@keyframes tile-alarm {
+  0%,
+  100% {
+    background: var(--bad-soft);
+    box-shadow: 0 0 0 0 rgba(185, 28, 28, 0);
+  }
+  50% {
+    background: #fecaca;
+    box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.35);
   }
 }

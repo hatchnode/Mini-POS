@@ -5,6 +5,7 @@ import {
   createOrder,
   discardIfEmpty,
   moveOrder,
+  orderLabel,
   setLineQty,
   unsentCount,
   voidOrder,
@@ -12,7 +13,8 @@ import {
 import {
   cancelPending,
   completeIfDone,
-  completesOrder,
+  isLastDish,
+  isServed,
   dishUrgency,
   kitchenQueue,
   lineKitchenStatus,
@@ -22,14 +24,18 @@ import {
   recallDish,
   sendToKitchen,
 } from '../src/domain/kitchen.js';
+import { markPaid } from '../src/domain/payments.js';
 
 const burger = { id: 'b', name: 'Burger', price: 1250 };
 const fries = { id: 'f', name: 'Fries', price: 450 };
 const emptyData = () => ({ orders: [], seq: 1 });
 
 /** An order on `table` with the given items added (not sent). */
-function orderWith(data, table, ...items) {
-  const order = createOrder(data, table, 1000);
+/** A numbered table like the ones a fresh install starts with. */
+const table = (n) => ({ id: `t${n}`, name: String(n) });
+
+function orderWith(data, tableNo, ...items) {
+  const order = createOrder(data, tableNo === 'take' ? null : table(tableNo), 1000);
   items.forEach((i) => addItem(order, i));
   return order;
 }
@@ -51,7 +57,8 @@ describe('building an order', () => {
     const data = emptyData();
     const order = orderWith(data, 3, burger, burger, fries);
     expect(order.no).toBe(1);
-    expect(order.table).toBe(3);
+    expect(order.table).toBe('t3');
+    expect(orderLabel(order)).toBe('Table 3');
     expect(order.lines).toHaveLength(2);
     expect(order.lines[0].qty).toBe(2);
   });
@@ -82,10 +89,10 @@ describe('building an order', () => {
 
   it('moves between tables and to takeaway', () => {
     const order = orderWith(emptyData(), 2, fries);
-    moveOrder(order, 5);
-    expect(order.table).toBe(5);
-    moveOrder(order, 'take');
-    expect(order.table).toBeNull();
+    moveOrder(order, { id: 'p', name: 'Patio' });
+    expect([order.table, orderLabel(order)]).toEqual(['p', 'Patio']);
+    moveOrder(order, null);
+    expect([order.table, orderLabel(order)]).toEqual([null, 'Takeaway']);
   });
 });
 
@@ -112,21 +119,38 @@ describe('sending dishes', () => {
 });
 
 describe('completing dishes', () => {
-  it('records each dish’s completion time and frees the table after the last one', () => {
+  it('records each dish’s completion time; the last one makes the order served, not completed', () => {
     const order = orderWith(emptyData(), 4, burger, fries);
     const [b, f] = sendToKitchen(order, 5000);
 
-    expect(completesOrder(order, b)).toBe(false);
-    expect(markDishReady(order, b.id, 6000)).toEqual({ dish: b, completed: false });
+    expect(isLastDish(order, b)).toBe(false);
+    expect(markDishReady(order, b.id, 6000)).toEqual({ dish: b, served: false, completed: false });
     expect(b.completedAt).toBe(6000);
-    expect(order.status).toBe('open');
 
-    expect(completesOrder(order, f)).toBe(true);
-    expect(markDishReady(order, f.id, 7000).completed).toBe(true);
+    expect(isLastDish(order, f)).toBe(true);
+    expect(markDishReady(order, f.id, 7000)).toEqual({ dish: f, served: true, completed: false });
     expect(f.completedAt).toBe(7000);
+    expect(isServed(order)).toBe(true);
+    expect(order.status).toBe('open'); // still at the table until paid
+  });
+
+  it('completes, freezing the total, when a served order is paid', () => {
+    const order = orderWith(emptyData(), 4, burger, fries);
+    const [b, f] = sendToKitchen(order, 5000);
+    markDishReady(order, b.id, 6000);
+    markDishReady(order, f.id, 7000);
+    expect(markPaid(order, 9000)).toEqual({ ok: true, completed: true });
     expect(order.status).toBe('completed');
-    expect(order.completedAt).toBe(7000);
+    expect(order.completedAt).toBe(9000);
     expect(order.totals.total).toBe(1700);
+  });
+
+  it('completes on the last dish when the customer already paid', () => {
+    const order = orderWith(emptyData(), 'take', burger);
+    const [b] = sendToKitchen(order, 5000);
+    expect(markPaid(order, 5500).completed).toBe(false); // still cooking
+    expect(markDishReady(order, b.id, 8000).completed).toBe(true);
+    expect(order.completedAt).toBe(8000);
   });
 
   it('keeps the table open while dishes are waiting to be sent', () => {
@@ -147,11 +171,13 @@ describe('completing dishes', () => {
     expect(markDishReady(order, f.id).dish).toBeNull();
   });
 
-  it('recalling a dish clears its completion time and reopens a finished order', () => {
+  it('recalling a dish clears its completion time and reopens a finished order, still paid', () => {
     const order = orderWith(emptyData(), 4, burger);
     const [b] = sendToKitchen(order);
     markDishReady(order, b.id);
+    markPaid(order);
     expect(recallDish(order, b.id)).toEqual({ dish: b, reopened: true });
+    expect(order.paidAt).toBeTruthy();
     expect(b.completedAt).toBeNull();
     expect(order.status).toBe('open');
     expect(order.completedAt).toBeUndefined();
@@ -169,14 +195,16 @@ describe('removing sent dishes', () => {
     expect(order.dishes.map((d) => [d.qty, d.completedAt])).toEqual([[2, 2000]]);
   });
 
-  it('completes the order when nothing is left cooking', () => {
+  it('completes a paid order when nothing is left cooking', () => {
     const order = orderWith(emptyData(), 1, burger, fries);
     const [b, f] = sendToKitchen(order);
     markDishReady(order, b.id);
     setLineQty(order, order.lines[1].id, 0);
     cancelPending(order, f.lineId, 1);
-    expect(completeIfDone(order, 9000)).toBe(true);
-    expect(order.completedAt).toBe(9000);
+    expect(completeIfDone(order, 9000)).toBe(false); // served but not paid
+    markPaid(order, 9500);
+    expect(order.status).toBe('completed');
+    expect(order.completedAt).toBe(9500);
   });
 });
 
@@ -188,7 +216,7 @@ describe('kitchen screen', () => {
     sendToKitchen(b, 1000);
     sendToKitchen(a, 2000);
     orderWith(data, 3, fries); // nothing sent
-    expect(kitchenQueue(data).map((g) => g.order.table)).toEqual([2, 1]);
+    expect(kitchenQueue(data).map((g) => g.order.table)).toEqual(['t2', 't1']);
     expect(pendingDishCount(data)).toBe(2);
     voidOrder(b);
     expect(pendingDishCount(data)).toBe(1);

@@ -7,14 +7,16 @@ export function openMoveDialog() {
   const order = currentOrder();
   if (!order) return;
   const busy = new Set(openOrders(store.data).map((o) => o.table));
-  let tables = '';
-  for (let n = 1; n <= store.data.settings.tables; n++) {
-    tables += `<button class="tbl" data-act="moveOrderTo" data-n="${n}" ${busy.has(n) ? 'disabled' : ''}>${n}</button>`;
-  }
+  const tables = store.data.tables
+    .map(
+      (t) =>
+        `<button class="tbl ${t.name.length > 3 ? 'long' : ''}" data-act="moveOrderTo" data-id="${t.id}" ${busy.has(t.id) ? 'disabled' : ''}>${esc(t.name)}</button>`,
+    )
+    .join('');
   openModal(`
     <div class="mh"><h3>Move ${esc(orderLabel(order))} to…</h3>${closeButton}</div>
     <div class="mb">
       ${tables ? `<div class="tables move">${tables}</div>` : ''}
-      ${order.table != null ? '<button data-act="moveOrderTo" data-n="take">Make it a takeaway</button>' : ''}
+      ${order.table != null ? '<button data-act="moveOrderTo" data-id="take">Make it a takeaway</button>' : ''}
     </div>`);
 }
