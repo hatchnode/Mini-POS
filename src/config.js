@@ -13,6 +13,12 @@ export const DISH_LATE_MINUTES = 15;
 /** How far back the kitchen's "ready" list reaches. */
 export const READY_LIST_HOURS = 12;
 
+/** Unpaid alarm: how long Snooze silences a table, and how often the sound repeats. */
+export const ALARM_SNOOZE_MINUTES = 10;
+export const ALARM_REPEAT_MINUTES = 3;
+/** How often the app re-checks alarms and timers. */
+export const TICK_MS = 15000;
+
 export const NOTE_PRESETS = [
   'No onions',
   'No ice',
@@ -42,4 +48,7 @@ export const DEFAULT_SETTINGS = {
   phone: '',
   currency: '$',
   footer: 'Thank you! Come again.',
+  /** Alarm when a served table is still unpaid after this many minutes (0 = off). */
+  unpaidAlarmMinutes: 5,
+  alarmSound: true,
 };

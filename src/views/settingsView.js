@@ -17,6 +17,15 @@ export function renderSettingsView() {
         <label class="fld">Currency symbol<input id="s-currency" value="${esc(s.currency)}" maxlength="4"></label>
         <div class="fld">Tables<div class="muted small settings-note">Add, rename or remove tables on the Orders screen with <b>Edit tables</b>. You have ${data.tables.length}.</div></div>
       </div>
+      <div class="grid2">
+        <label class="fld">Unpaid alarm after (minutes)
+          <input id="s-alarm-minutes" type="number" min="0" max="120" value="${Number(s.unpaidAlarmMinutes) || 0}">
+          <span class="muted small settings-note">A served table still unpaid this long flashes, shows a banner and beeps. 0 turns it off.</span>
+        </label>
+        <label class="fld">Alarm sound
+          <span class="inrow"><input id="s-alarm-sound" type="checkbox" ${s.alarmSound ? 'checked' : ''}> <span class="settings-note">Play a sound</span></span>
+        </label>
+      </div>
       <label class="fld">Receipt footer<input id="s-footer" value="${esc(s.footer)}"></label>
       <div><button class="btn-primary" data-act="saveSettings">Save settings</button></div>
     </div></section>

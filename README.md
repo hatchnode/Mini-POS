@@ -10,10 +10,11 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Per-dish kitchen orders**: "Send to kitchen" turns each line into its own dish order ("2× Burger" sent together is one dish), stamped with the time it was sent. The kitchen screen groups dishes by table, and each dish has its own timer (amber after 8 minutes, red after 15) and its own **Ready** button, which records that dish's completion time. Items added later are sent as new dishes with their own times.
 - **Paying**: tap **Mark paid** when the customer pays, before or after eating. A bill completes, and its table frees, only when every dish is served **and** it is paid. Items added after paying show the balance still due. **Recall** puts a ready dish back in the kitchen and reopens its table if needed. Removing a dish that is still cooking takes it off the kitchen screen. Prices are final, with no tax, discount or tip.
 - **Walk-out protection**: a table whose dishes are all served but unpaid turns **red** ("unpaid $17.00") and stays occupied, and its ticket warns to take payment before the customer leaves. Sales shows an **Awaiting payment** list. If a customer leaves without paying, **Walked out** records the loss and frees the table, so it shows in Sales instead of disappearing.
+- **Unpaid alarm**: if a served table is still unpaid after a set time (5 minutes by default), its tile flashes, a red banner appears at the top of every screen (Orders, Kitchen, Sales…) with **Open** and **Customer still here** (snooze 10 minutes), and an alert sound plays, repeating every 3 minutes until it is paid. Set the minutes (0 = off) and the sound in **Settings**. The sound starts working after the first tap on the page, as browsers require.
 - **Receipts**: **Print bill** (open table) or **Receipt** (Sales) shows the receipt on screen; **Print** sends it to the printer. Laid out for 80 mm thermal printers, and works with any printer or "Save as PDF".
 - **Order times**: every dish logs when it was ordered (sent) and when the kitchen completed it. Each order line on the ticket shows how many are not sent, cooking or ready.
 - **Sales**: money counts only **paid** bills. For any day you see paid sales, bills paid, average bill, awaiting payment, walk-outs, dishes completed, average dish time, sales by hour, top items, the day's bills (paid / walked out / void, with reprint and void), and a **dish log** (ordered, completed and time taken for every dish, with its bill status). Export the dish log to CSV.
-- **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer). The bottom of every receipt shows the restaurant name, location and phone.
+- **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound). The bottom of every receipt shows the restaurant name, location and phone.
 - **Backups**: export everything to JSON and import it on another device.
 
 ## Getting started
@@ -69,6 +70,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
 │   │   ├── orders.js        Totals, lines, create/move/complete/void orders
+│   │   ├── alarms.js        Unpaid alarm: which served tables have waited too long, snooze
 │   │   ├── payments.js      Mark paid, walk-outs, awaiting payment, payment status
 │   │   ├── tables.js        Add, rename and remove tables; table labels
 │   │   ├── kitchen.js       Per-dish kitchen orders: send, ready, recall, cancel, queue
@@ -76,7 +78,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   ├── views/               One render function per screen, returns HTML
 │   ├── components/          Dialogs: item note, move table, edit table
 │   ├── actions/             Event handlers per area, merged in actions/index.js
-│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, formatting
+│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, alarm banner and sound, formatting
 │   ├── utils/               Small helpers: money, dates, text escaping, ids, files
 │   └── styles/              CSS split by area, imported via styles/index.css
 └── tests/                   Vitest unit tests for domain, schema and utils

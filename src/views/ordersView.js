@@ -10,6 +10,7 @@ import {
 } from '../domain/orders.js';
 import { findTable, tableLabel } from '../domain/tables.js';
 import { currentOrder, store } from '../state/store.js';
+import { alarmingOrderIds } from '../ui/alarm.js';
 import { categoryColor, categoryIndex, money } from '../ui/format.js';
 import { timeStr } from '../utils/date.js';
 import { esc, plural } from '../utils/text.js';
@@ -31,7 +32,7 @@ export function renderItemsGrid() {
     .join('');
 }
 
-function tableTile(t, firstOpen, order, editing) {
+function tableTile(t, firstOpen, order, editing, alarming) {
   const { ui } = store;
   const o = firstOpen.get(t.id);
   const selected = !editing && (order?.table === t.id || ui.pendingTable === t.id);
@@ -45,6 +46,7 @@ function tableTile(t, firstOpen, order, editing) {
     'tbl',
     o ? 'busy' : '',
     unpaid ? 'unpaid' : '',
+    o && alarming.has(o.id) ? 'alarm' : '',
     selected ? 'sel' : '',
     editing ? 'editing' : '',
     t.name.length > 3 ? 'long' : '',
@@ -65,16 +67,17 @@ function tablesPanel(order, open) {
   open.forEach((o) => {
     if (o.table != null && !firstOpen.has(o.table)) firstOpen.set(o.table, o);
   });
+  const alarming = alarmingOrderIds();
   const others = open.filter((o) => o.table == null || !known.has(o.table) || firstOpen.get(o.table) !== o);
   const otherList = others
     .map(
       (o) =>
-        `<button class="orow ${order?.id === o.id ? 'sel' : ''} ${isServed(o) && !isPaid(o) ? 'unpaid' : ''}" data-act="openOrder" data-id="${o.id}">
+        `<button class="orow ${order?.id === o.id ? 'sel' : ''} ${isServed(o) && !isPaid(o) ? 'unpaid' : ''} ${alarming.has(o.id) ? 'alarm' : ''}" data-act="openOrder" data-id="${o.id}">
           <span>${esc(orderLabel(o))} <span class="muted">#${o.no}</span>${isPaid(o) ? ' <span class="pill paid">paid</span>' : ''}</span><b>${money(calcTotals(o).total)}</b></button>`,
     )
     .join('');
 
-  const tiles = data.tables.map((t) => tableTile(t, firstOpen, order, editing)).join('');
+  const tiles = data.tables.map((t) => tableTile(t, firstOpen, order, editing, alarming)).join('');
   const addTile = editing
     ? '<button class="tbl add-tbl" data-act="addTable">+<small>Add table</small></button>'
     : '';
@@ -203,7 +206,7 @@ function ticketPanel(order) {
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>
     </div>
     <div class="actions">
-      ${status ? `<div class="status-note ${statusCls}">${status}</div>` : ''}
+      ${status ? `<div class="status-note ${statusCls}">${status}${alarmingOrderIds().has(order.id) ? `<div><button class="small" data-act="snoozeAlarm" data-id="${order.id}">Customer still here · snooze alarm</button></div>` : ''}</div>` : ''}
       ${unsent || !served ? `<button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>` : ''}
       ${!paid && hasLines ? `<button class="btn-ok wide" data-act="markPaid" data-id="${order.id}">Mark paid ${money(due)}</button>` : ''}
       <div class="action-row">

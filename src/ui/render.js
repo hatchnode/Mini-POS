@@ -1,5 +1,6 @@
 import { pendingDishCount } from '../domain/kitchen.js';
 import { store } from '../state/store.js';
+import { renderAlarmBanner } from './alarm.js';
 import { $, $$ } from '../utils/dom.js';
 import { renderKitchenView } from '../views/kitchenView.js';
 import { renderMenuView } from '../views/menuView.js';
@@ -33,6 +34,7 @@ export function render() {
   $('#storage-banner').hidden = store.storageOK;
 
   $('#app').innerHTML = (VIEWS[ui.view] || renderOrdersView)();
+  renderAlarmBanner();
 
   $$('[data-keep]').forEach((el) => {
     if (scroll[el.dataset.keep] != null) el.scrollTop = scroll[el.dataset.keep];

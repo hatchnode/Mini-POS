@@ -15,6 +15,8 @@ export const click = {
     s.phone = $('#s-phone').value.trim();
     s.currency = $('#s-currency').value;
     s.footer = $('#s-footer').value.trim();
+    s.unpaidAlarmMinutes = Math.max(0, Math.min(120, parseInt($('#s-alarm-minutes').value, 10) || 0));
+    s.alarmSound = $('#s-alarm-sound').checked;
     save();
     render();
     toast('Settings saved');

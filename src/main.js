@@ -8,6 +8,7 @@ import { bindEvents } from './ui/events.js';
 import { closeModal, isModalOpen } from './ui/modal.js';
 import { render } from './ui/render.js';
 import { toast } from './ui/toast.js';
+import { unlockAudio } from './ui/sound.js';
 import { $ } from './utils/dom.js';
 
 onSaveError(() => {
@@ -40,6 +41,9 @@ window.addEventListener('storage', (e) => {
   Object.assign(store.ui, { currentOrderId, pendingTable, category });
   render();
 });
+
+// Browsers only allow sound after the first tap or key press.
+['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, unlockAudio, { once: true }));
 
 startClock();
 render();

@@ -1,4 +1,6 @@
 import { balanceDue, orderLabel } from '../domain/orders.js';
+import { ALARM_SNOOZE_MINUTES } from '../config.js';
+import { snoozeAlarm } from '../domain/alarms.js';
 import { markPaid, markWalkout } from '../domain/payments.js';
 import { save, store } from '../state/store.js';
 import { money } from '../ui/format.js';
@@ -51,5 +53,26 @@ export const click = {
         toast(`Walk-out recorded for ${orderLabel(order)} #${order.no}`);
       },
     });
+  },
+  /** Alarm banner: jump to the unpaid order on the Orders screen. */
+  openAlarmOrder(el) {
+    const order = findOrder(el);
+    if (!order) return;
+    Object.assign(store.ui, {
+      view: 'orders',
+      currentOrderId: order.id,
+      pendingTable: null,
+      editTables: false,
+    });
+    render();
+  },
+  /** The customer is clearly still there (e.g. ordering dessert): silence this table for a while. */
+  snoozeAlarm(el) {
+    const order = findOrder(el);
+    if (!order) return;
+    snoozeAlarm(order, Date.now(), ALARM_SNOOZE_MINUTES);
+    save();
+    render();
+    toast(`${orderLabel(order)} alarm snoozed for ${ALARM_SNOOZE_MINUTES} min`);
   },
 };
