@@ -1,0 +1,185 @@
+/* Design tokens, reset, form controls and small utilities. */
+:root {
+  --bg: #f6f4ef;
+  --panel: #ffffff;
+  --ink: #1f2328;
+  --muted: #6b7280;
+  --line: #e5e1d8;
+  --accent: #c2410c;
+  --accent-ink: #ffffff;
+  --ok: #15803d;
+  --warn: #b45309;
+  --warn-soft: #fdf3e1;
+  --bad: #b91c1c;
+  --bad-soft: #fdecec;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  font:
+    15px/1.4 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 12px;
+  touch-action: manipulation;
+  user-select: none;
+}
+button:hover {
+  border-color: #cfc8b8;
+}
+button:active {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+button.small {
+  padding: 5px 9px;
+  font-size: 13px;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-ok {
+  background: var(--ok);
+  color: #fff;
+  border-color: var(--ok);
+  font-weight: 600;
+}
+.btn-danger {
+  color: var(--bad);
+}
+.btn-dangerfill {
+  background: var(--bad);
+  color: #fff;
+  border-color: var(--bad);
+  font-weight: 600;
+}
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.linkbtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  min-width: 0;
+}
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* utilities */
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 12px;
+}
+.bad {
+  color: var(--bad);
+}
+.flush {
+  margin: 0;
+}
+.span-all {
+  grid-column: 1 / -1;
+}
+.inrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.inrow input {
+  flex: 1;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.stack {
+  display: grid;
+  gap: 8px;
+}
+.form {
+  display: grid;
+  gap: 12px;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.row.total {
+  font-size: 21px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 36px 12px;
+}

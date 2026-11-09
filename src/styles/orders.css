@@ -1,0 +1,267 @@
+/* Orders screen: tables, menu tiles and the ticket. */
+.pos {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 370px;
+  gap: 14px;
+  height: calc(100vh - 90px);
+  height: calc(100dvh - 90px);
+  min-height: 540px;
+}
+.pos > .panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* tables */
+.tables {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.tables.move {
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+}
+.tbl {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  font-weight: 700;
+  font-size: 18px;
+}
+.tables.move .tbl {
+  font-size: 16px;
+}
+.tbl small {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--muted);
+}
+.tbl.busy {
+  background: var(--warn-soft);
+  border-color: #f0d29b;
+}
+.tbl.busy small {
+  color: var(--warn);
+  font-variant-numeric: tabular-nums;
+}
+.tbl.sel,
+.take-btn.sel,
+.orow.sel {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+}
+.take-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border-style: dashed;
+  font-weight: 600;
+}
+.sub {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.olist {
+  display: grid;
+  gap: 6px;
+}
+.orow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  background: var(--warn-soft);
+  border-color: #f0d29b;
+}
+.orow b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* menu */
+.menu-h {
+  flex-wrap: wrap;
+}
+.menu-h input {
+  flex: 0 1 220px;
+}
+.cats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.item {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border-left: 5px solid var(--c, var(--line));
+}
+.item:hover {
+  border-left-color: var(--c, var(--line));
+}
+.item b {
+  font-weight: 600;
+  line-height: 1.25;
+}
+.item span {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ticket */
+.tk-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+.line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.line:last-child {
+  border-bottom: 0;
+}
+.nm {
+  font-weight: 600;
+}
+.note {
+  font-size: 13px;
+  color: var(--warn);
+  font-weight: 500;
+}
+.meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ln-side {
+  text-align: right;
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+.lt {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qty button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+.qty b {
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.new-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.sum {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px;
+  display: grid;
+  gap: 3px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+.actions .wide {
+  grid-column: 1 / -1;
+  padding: 15px;
+  font-size: 18px;
+}
+.mobile-bar {
+  display: none;
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  padding: 14px;
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  font-weight: 600;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 1100px) {
+  .pos {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    height: auto;
+    min-height: 0;
+  }
+  .tables-panel {
+    grid-column: 1 / -1;
+  }
+  .tables-panel .scroll {
+    max-height: 240px;
+  }
+  .tables {
+    grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  }
+  .menu-panel,
+  .ticket-panel {
+    height: 72vh;
+  }
+  .ticket-panel {
+    position: sticky;
+    top: 70px;
+  }
+}
+@media (max-width: 720px) {
+  .pos {
+    grid-template-columns: 1fr;
+  }
+  .menu-panel,
+  .ticket-panel {
+    height: auto;
+    position: static;
+  }
+  .menu-panel .scroll {
+    max-height: 60vh;
+  }
+  .items {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  .mobile-bar {
+    display: flex;
+  }
+}

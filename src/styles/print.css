@@ -1,0 +1,57 @@
+/* Receipts: only #print-area is printed, sized for 80 mm thermal paper. */
+#print-area {
+  display: none;
+}
+
+@media print {
+  body > *:not(#print-area) {
+    display: none !important;
+  }
+  #print-area {
+    display: block;
+  }
+  body {
+    background: #fff;
+  }
+  @page {
+    margin: 4mm;
+  }
+  .rc {
+    width: 72mm;
+    font:
+      12px/1.35 ui-monospace,
+      Menlo,
+      Consolas,
+      monospace;
+    color: #000;
+  }
+  .rc table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .rc td {
+    vertical-align: top;
+    padding: 1px 0;
+  }
+  .rc .r {
+    text-align: right;
+    white-space: nowrap;
+    padding-left: 8px;
+  }
+  .rc hr {
+    border: 0;
+    border-top: 1px dashed #000;
+    margin: 6px 0;
+  }
+  .rc-c {
+    text-align: center;
+  }
+  .rc-name {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .rn {
+    font-size: 11px;
+    padding-left: 12px;
+  }
+}

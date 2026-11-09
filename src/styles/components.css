@@ -1,0 +1,161 @@
+/* Reusable pieces: badge, chips, fields, segmented control, modal, toast. */
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  margin-left: 6px;
+}
+.chip {
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.chip.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.fld {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.fld input,
+.fld select {
+  color: var(--ink);
+  font-weight: 400;
+  font-size: 15px;
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quick button {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+}
+.seg button {
+  padding: 12px;
+}
+.seg button.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+/* modal */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 20;
+}
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+.mh {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.mh h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.mb {
+  padding: 16px 18px;
+  display: grid;
+  gap: 14px;
+}
+.mb p {
+  margin: 0;
+}
+.mf {
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.mf button {
+  padding: 10px 16px;
+}
+.sumbox {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+.center {
+  text-align: center;
+  justify-items: center;
+}
+.huge {
+  font-size: 42px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.huge.ok {
+  color: var(--ok);
+}
+
+/* toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  max-width: calc(100% - 32px);
+}
+.toast.show {
+  opacity: 1;
+}
+
+@media (max-width: 720px) {
+  .grid2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}

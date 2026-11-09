@@ -1,52 +1,98 @@
 # Mini-POS
 
-A lightweight point-of-sale for a small restaurant. One file (`index.html`), no server, no install, no build step. Open it in a browser on a tablet or laptop and start taking orders. It works offline.
+A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, works offline, and the production build is about 13 KB of gzipped JavaScript.
 
 ## Features
 
 - **Tables & takeaway**: tap a table to start or reopen its order; open tables show their running total. Move an order to another table or turn it into a takeaway.
-- **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick chips ("No onions", "Extra spicy", …).
-- **Kitchen screen**: "Send to kitchen" sends only the items that haven't been sent yet, so add-ons go as a new ticket. Tickets turn amber after 8 minutes and red after 15. Mark ready / recall.
-- **Checkout**: % or fixed discount, tip (10/15/20% buttons), cash / card / other. Cash shows quick-tender buttons and the change due.
-- **Receipts**: print a guest bill or a paid receipt, formatted for 80 mm thermal printers (works on normal printers too).
-- **Sales**: pick any day to see total collected, net sales, tax, tips, discounts, average order, sales by hour, by payment method, top items, and every order with reprint/void. Export the day to CSV.
-- **Menu editor**: add, rename, re-price, re-categorise, hide or delete items and categories. Changes save as you type; prices on orders already taken don't change.
-- **Settings**: restaurant name, address line, currency symbol, tax rate, number of tables, receipt footer.
-- **Backups**: export everything to a JSON file and import it on another device.
-
-All money is handled in whole cents, so totals never drift by a cent.
+- **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick presets ("No onions", "Extra spicy", …).
+- **Kitchen screen**: "Send to kitchen" sends only items not sent yet, so add-ons go as a new ticket. Tickets turn amber after 8 minutes and red after 15.
+- **Checkout**: % or fixed discount, tip (10/15/20% buttons), cash / card / other, quick-tender buttons and change due. Prices are final; there is no tax line.
+- **Receipts**: guest bill or paid receipt, laid out for 80 mm thermal printers.
+- **Sales**: any day's total collected, sales excluding tips, tips, discounts, average order, sales by hour, by payment method, top items, and every order with reprint/void. Export to CSV.
+- **Menu editor** and **settings** (name, address line, currency symbol, number of tables, receipt footer).
+- **Backups**: export everything to JSON and import it on another device.
 
 ## Getting started
 
-1. Open `index.html` in Chrome, Edge or Safari (double-click it, or serve the folder with `python3 -m http.server` and visit `http://localhost:8000`).
-2. Go to **Settings** and set your name, tax rate, currency and number of tables.
-3. Go to **Menu**, delete the sample items and add your own.
-4. **Orders** → tap a table → tap items → **Send to kitchen** → **Pay**.
+Requires Node.js 22.12 or newer (see `engines` in package.json).
 
-### On a tablet
+```bash
+npm install
+npm run dev        # http://localhost:5173 with hot reload
+```
 
-Host the folder anywhere static (GitHub Pages, Netlify, or a local server), open it in the tablet's browser and use **Add to Home Screen** so it opens full-screen like an app.
+| Script                 | What it does                       |
+| ---------------------- | ---------------------------------- |
+| `npm run dev`          | Start the dev server               |
+| `npm run build`        | Production build into `dist/`      |
+| `npm run preview`      | Serve the production build locally |
+| `npm test`             | Run unit tests (Vitest)            |
+| `npm run test:watch`   | Tests in watch mode                |
+| `npm run lint`         | ESLint                             |
+| `npm run format`       | Format everything with Prettier    |
+| `npm run format:check` | Check formatting (useful in CI)    |
+
+### First run
+
+1. **Settings**: set your restaurant name, currency and number of tables.
+2. **Menu**: delete the sample items and add your own.
+3. **Orders**: tap a table → tap items → **Send to kitchen** → **Pay**.
+
+## Deploying
+
+`npm run build` produces a static `dist/` folder with relative paths, so it can be hosted anywhere static: GitHub Pages, Netlify, Cloudflare Pages, or any web server. On a tablet, open the URL and use **Add to Home Screen** to run it full-screen.
+
+The built files must be served over HTTP; opening `dist/index.html` straight from disk won't load the JavaScript modules. Use `npm run preview` to try the build locally.
 
 ### Receipt printer
 
-Set your thermal printer as the system default. In the browser's print dialog, set margins to **None** and turn off headers/footers once; the browser remembers it. For silent printing in Chrome, launch it with `--kiosk-printing`.
+Set the thermal printer as the system default. In the browser's print dialog set margins to **None** and turn off headers/footers once. For silent printing in Chrome, launch it with `--kiosk-printing`.
 
-## Where data lives
+## Project structure
 
-Everything is saved in the browser's local storage **on that one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly (end of each day is a good habit). Two tabs on the same device stay in sync; two different devices do not.
+```
+├── index.html               App shell (header, containers); Vite entry
+├── public/                  Static files copied as-is (favicon)
+├── src/
+│   ├── main.js              Bootstraps styles, events, clock and first render
+│   ├── config.js            Constants: storage key, presets, ticket timings, defaults
+│   ├── state/
+│   │   ├── schema.js        Seed data, migrations between data versions, backup check
+│   │   ├── storage.js       localStorage read/write
+│   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
+│   ├── domain/              Business rules: pure functions, no DOM, unit tested
+│   │   ├── orders.js        Totals, lines, create/move/void orders, discounts
+│   │   ├── kitchen.js       Kitchen tickets, urgency, pruning
+│   │   ├── payments.js      Quick-tender amounts, tip %, completing a payment
+│   │   └── sales.js         Daily summary, hourly chart range, CSV rows
+│   ├── views/               One render function per screen, returns HTML
+│   ├── components/          Dialogs: checkout, item note, move table
+│   ├── actions/             Event handlers per area, merged in actions/index.js
+│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, formatting
+│   ├── utils/               Small helpers: money, dates, text escaping, ids, files
+│   └── styles/              CSS split by area, imported via styles/index.css
+└── tests/                   Vitest unit tests for domain, schema and utils
+```
 
-## Limits (by design, to stay lightweight)
+### How it fits together
+
+1. **State** lives in `store` (`src/state/store.js`). `store.data` is saved to localStorage; `store.ui` (current screen, selected table, search) is not.
+2. **Views** read the store and return HTML strings. `render()` swaps the active view in and keeps scroll positions.
+3. **Events** are delegated. Markup declares intent with `data-act`, `data-change`, `data-input` or `data-submit`, and `ui/events.js` calls the handler of that name from `actions/`.
+4. **Actions** change state through the `domain/` functions, call `save()`, then `render()`.
+
+To add a feature: put the rule in `domain/` with a test, add a handler in `actions/`, and render it in a `views/` file.
+
+### Data
+
+All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data (for example, version 2 dropped the tax setting). Data saved by the earlier single-file version loads unchanged. Orders paid before tax was removed still show their tax on reprinted receipts.
+
+Everything stays **on one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly. Two tabs on the same device stay in sync.
+
+## Limits
 
 - Single device: no sync between a front-of-house tablet and a separate kitchen screen.
 - No staff logins or PINs.
-- Card payments are recorded as "Card"; it doesn't talk to a card terminal.
-- No inventory, modifiers with prices, split bills, or tax-inclusive pricing yet.
-
-## Project layout
-
-```
-index.html   the whole app: HTML, CSS and JavaScript
-README.md    this file
-```
-
-The code is plain JavaScript with no dependencies. State is one object (`S`) saved to `localStorage` under the key `mini-pos-v1`; views are rendered from it by `viewOrders`, `viewKitchen`, `viewSales`, `viewMenu` and `viewSettings`.
+- Card payments are recorded as "Card"; there's no card-terminal integration.
+- No inventory, priced modifiers or split bills yet.
