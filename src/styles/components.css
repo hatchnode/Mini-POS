@@ -119,3 +119,10 @@
 .toast.show {
   opacity: 1;
 }
+.mf.spread {
+  justify-content: space-between;
+}
+.settings-note {
+  font-weight: 400;
+  padding-top: 4px;
+}

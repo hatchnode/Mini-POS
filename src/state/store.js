@@ -20,12 +20,14 @@ export const store = {
   ui: {
     view: 'orders',
     currentOrderId: null,
-    /** Table number, 'take' for a new takeaway, or null. The order is created on the first item. */
+    /** Table id, 'take' for a new takeaway, or null. The order is created on the first item. */
     pendingTable: null,
     category: 'all',
     search: '',
     salesDate: todayStr(),
     showReadyDishes: false,
+    /** Orders screen: tables are being added, renamed or removed. */
+    editTables: false,
   },
 };
 

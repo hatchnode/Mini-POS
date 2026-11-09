@@ -9,13 +9,15 @@
  * Lifecycle: open → completed (when the kitchen has marked every dish ready) or void.
  */
 import { uid } from '../utils/id.js';
+import { tableLabel } from './tables.js';
 
 export function calcTotals(order) {
   const subtotal = order.lines.reduce((sum, l) => sum + l.price * l.qty, 0);
   return { subtotal, total: subtotal };
 }
 
-export const orderLabel = (order) => (order.table != null ? `Table ${order.table}` : 'Takeaway');
+export const orderLabel = (order) =>
+  order.table != null ? tableLabel(order.tableName ?? order.table) : 'Takeaway';
 export const itemCount = (order) => order.lines.reduce((n, l) => n + l.qty, 0);
 export const unsentCount = (order) => order.lines.reduce((n, l) => n + Math.max(0, l.qty - l.sent), 0);
 export const openOrders = (data) => data.orders.filter((o) => o.status === 'open');
@@ -24,12 +26,13 @@ export const openOrders = (data) => data.orders.filter((o) => o.status === 'open
 export const orderDuration = (order) =>
   order.createdAt && order.completedAt ? order.completedAt - order.createdAt : null;
 
-/** `table` is a table number or 'take' for takeaway. */
+/** `table` is a table from `data.tables`, or null for a takeaway. */
 export function createOrder(data, table, now = Date.now()) {
   const order = {
     id: uid(),
     no: data.seq++,
-    table: table === 'take' ? null : table,
+    table: table?.id ?? null,
+    tableName: table?.name ?? null,
     createdAt: now,
     status: 'open',
     lines: [],
@@ -79,9 +82,10 @@ export function discardIfEmpty(data, order) {
   return true;
 }
 
-/** `table` is a table number or 'take'. */
+/** Move to `table` (from `data.tables`), or to takeaway when `table` is null. */
 export function moveOrder(order, table) {
-  order.table = table === 'take' ? null : table;
+  order.table = table?.id ?? null;
+  order.tableName = table?.name ?? null;
 }
 
 /** Close an order as a sale, freezing its totals. */

@@ -4,8 +4,9 @@ import * as menu from './menuActions.js';
 import * as orders from './orderActions.js';
 import * as sales from './salesActions.js';
 import * as settings from './settingsActions.js';
+import * as tables from './tableActions.js';
 
-const modules = [common, orders, kitchen, sales, menu, settings];
+const modules = [common, orders, tables, kitchen, sales, menu, settings];
 
 function merge(kind) {
   const out = {};

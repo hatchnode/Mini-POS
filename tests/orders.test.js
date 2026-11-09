@@ -5,6 +5,7 @@ import {
   createOrder,
   discardIfEmpty,
   moveOrder,
+  orderLabel,
   setLineQty,
   unsentCount,
   voidOrder,
@@ -28,8 +29,11 @@ const fries = { id: 'f', name: 'Fries', price: 450 };
 const emptyData = () => ({ orders: [], seq: 1 });
 
 /** An order on `table` with the given items added (not sent). */
-function orderWith(data, table, ...items) {
-  const order = createOrder(data, table, 1000);
+/** A numbered table like the ones a fresh install starts with. */
+const table = (n) => ({ id: `t${n}`, name: String(n) });
+
+function orderWith(data, tableNo, ...items) {
+  const order = createOrder(data, tableNo === 'take' ? null : table(tableNo), 1000);
   items.forEach((i) => addItem(order, i));
   return order;
 }
@@ -51,7 +55,8 @@ describe('building an order', () => {
     const data = emptyData();
     const order = orderWith(data, 3, burger, burger, fries);
     expect(order.no).toBe(1);
-    expect(order.table).toBe(3);
+    expect(order.table).toBe('t3');
+    expect(orderLabel(order)).toBe('Table 3');
     expect(order.lines).toHaveLength(2);
     expect(order.lines[0].qty).toBe(2);
   });
@@ -82,10 +87,10 @@ describe('building an order', () => {
 
   it('moves between tables and to takeaway', () => {
     const order = orderWith(emptyData(), 2, fries);
-    moveOrder(order, 5);
-    expect(order.table).toBe(5);
-    moveOrder(order, 'take');
-    expect(order.table).toBeNull();
+    moveOrder(order, { id: 'p', name: 'Patio' });
+    expect([order.table, orderLabel(order)]).toEqual(['p', 'Patio']);
+    moveOrder(order, null);
+    expect([order.table, orderLabel(order)]).toEqual([null, 'Takeaway']);
   });
 });
 
@@ -188,7 +193,7 @@ describe('kitchen screen', () => {
     sendToKitchen(b, 1000);
     sendToKitchen(a, 2000);
     orderWith(data, 3, fries); // nothing sent
-    expect(kitchenQueue(data).map((g) => g.order.table)).toEqual([2, 1]);
+    expect(kitchenQueue(data).map((g) => g.order.table)).toEqual(['t2', 't1']);
     expect(pendingDishCount(data)).toBe(2);
     voidOrder(b);
     expect(pendingDishCount(data)).toBe(1);

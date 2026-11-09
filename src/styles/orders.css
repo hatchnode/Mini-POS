@@ -298,3 +298,45 @@
     display: flex;
   }
 }
+
+/* table names, edit mode and takeaway */
+.tbl-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tbl.long {
+  font-size: 14px;
+}
+.tbl.editing {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+.tbl.editing small {
+  color: var(--accent);
+}
+.add-tbl {
+  border-style: dashed;
+  color: var(--accent);
+  font-size: 24px;
+}
+.add-tbl small {
+  color: var(--accent);
+}
+.edit-hint {
+  background: #fff1e8;
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.take-hint {
+  text-align: center;
+  margin-top: 4px;
+}
+.ticket-panel .empty.ready {
+  color: var(--ink);
+  font-weight: 500;
+}

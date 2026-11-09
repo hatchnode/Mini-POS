@@ -1,4 +1,3 @@
-import { MAX_TABLES } from '../config.js';
 import { createSeedData, isBackup } from '../state/schema.js';
 import { clearSelection, replaceData, save, store } from '../state/store.js';
 import { confirmDialog } from '../ui/modal.js';
@@ -15,7 +14,6 @@ export const click = {
     s.address = $('#s-address').value.trim();
     s.phone = $('#s-phone').value.trim();
     s.currency = $('#s-currency').value;
-    s.tables = Math.max(0, Math.min(MAX_TABLES, parseInt($('#s-tables').value, 10) || 0));
     s.footer = $('#s-footer').value.trim();
     save();
     render();

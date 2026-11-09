@@ -1,9 +1,11 @@
 /** App-wide constants. Change these to tune behaviour without touching logic. */
 
 export const STORAGE_KEY = 'mini-pos-v1';
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
-export const MAX_TABLES = 60;
+export const MAX_TABLES = 100;
+/** Tables in a fresh install. */
+export const DEFAULT_TABLE_COUNT = 12;
 
 /** Dishes in the kitchen turn amber / red after this many minutes. */
 export const DISH_WARN_MINUTES = 8;
@@ -39,6 +41,5 @@ export const DEFAULT_SETTINGS = {
   address: '',
   phone: '',
   currency: '$',
-  tables: 12,
   footer: 'Thank you! Come again.',
 };

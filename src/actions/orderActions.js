@@ -2,6 +2,7 @@ import { openMoveDialog } from '../components/moveDialog.js';
 import { appendNotePreset, openNoteDialog, saveNote } from '../components/noteDialog.js';
 import { cancelPending, completeIfDone, sendToKitchen } from '../domain/kitchen.js';
 import * as Orders from '../domain/orders.js';
+import { findTable } from '../domain/tables.js';
 import { currentOrder, save, store } from '../state/store.js';
 import { closeModal, confirmDialog } from '../ui/modal.js';
 import { printReceiptNow, showReceipt } from '../ui/receipt.js';
@@ -10,12 +11,19 @@ import { toast } from '../ui/toast.js';
 import { $ } from '../utils/dom.js';
 import { renderItemsGrid } from '../views/ordersView.js';
 
-function selectTable(n) {
+function selectTable(tableId) {
   const { ui } = store;
-  const open = Orders.openOrders(store.data).find((o) => o.table === n);
+  const open = Orders.openOrders(store.data).find((o) => o.table === tableId);
   ui.currentOrderId = open ? open.id : null;
-  ui.pendingTable = open ? null : n;
+  ui.pendingTable = open ? null : tableId;
   render();
+}
+
+/** On narrow screens the ticket sits below the menu, so bring it into view. */
+function revealTicket() {
+  if (window.matchMedia('(max-width: 720px)').matches) {
+    $('.ticket-panel')?.scrollIntoView({ behavior: 'smooth' });
+  }
 }
 
 function addMenuItem(itemId) {
@@ -23,11 +31,19 @@ function addMenuItem(itemId) {
   if (!item) return;
   let order = currentOrder();
   if (!order) {
-    if (store.ui.pendingTable == null) {
+    const pending = store.ui.pendingTable;
+    if (pending == null) {
       toast('Pick a table or start a takeaway first');
       return;
     }
-    order = Orders.createOrder(store.data, store.ui.pendingTable);
+    const table = pending === 'take' ? null : findTable(store.data, pending);
+    if (pending !== 'take' && !table) {
+      store.ui.pendingTable = null;
+      render();
+      toast('That table was removed. Pick another one.');
+      return;
+    }
+    order = Orders.createOrder(store.data, table);
     store.ui.currentOrderId = order.id;
     store.ui.pendingTable = null;
   }
@@ -69,11 +85,13 @@ function changeLineQty(lineId, delta) {
 }
 
 export const click = {
-  selectTable: (el) => selectTable(Number(el.dataset.n)),
+  selectTable: (el) => selectTable(el.dataset.id),
   newTakeaway() {
     store.ui.currentOrderId = null;
     store.ui.pendingTable = 'take';
     render();
+    revealTicket();
+    toast('New takeaway: tap menu items to add them');
   },
   openOrder(el) {
     store.ui.currentOrderId = el.dataset.id;
@@ -111,7 +129,9 @@ export const click = {
   moveOrderTo(el) {
     const order = currentOrder();
     if (!order) return;
-    Orders.moveOrder(order, el.dataset.n === 'take' ? 'take' : Number(el.dataset.n));
+    const target = el.dataset.id === 'take' ? null : findTable(store.data, el.dataset.id);
+    if (el.dataset.id !== 'take' && !target) return;
+    Orders.moveOrder(order, target);
     save();
     closeModal();
     render();

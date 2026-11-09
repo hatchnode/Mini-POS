@@ -1,4 +1,3 @@
-import { MAX_TABLES } from '../config.js';
 import { store } from '../state/store.js';
 import { esc } from '../utils/text.js';
 
@@ -16,7 +15,7 @@ export function renderSettingsView() {
       <label class="fld">Phone (printed on receipts)<input id="s-phone" type="tel" value="${esc(s.phone)}" placeholder="e.g. (555) 123-4567"></label>
       <div class="grid2">
         <label class="fld">Currency symbol<input id="s-currency" value="${esc(s.currency)}" maxlength="4"></label>
-        <label class="fld">Tables<input id="s-tables" type="number" min="0" max="${MAX_TABLES}" value="${s.tables}"></label>
+        <div class="fld">Tables<div class="muted small settings-note">Add, rename or remove tables on the Orders screen with <b>Edit tables</b>. You have ${data.tables.length}.</div></div>
       </div>
       <label class="fld">Receipt footer<input id="s-footer" value="${esc(s.footer)}"></label>
       <div><button class="btn-primary" data-act="saveSettings">Save settings</button></div>

@@ -25,6 +25,10 @@ bindEvents(handlers, {
       e.preventDefault();
       $('[data-act=saveNote]')?.click();
     }
+    if (e.key === 'Enter' && e.target.id === 'table-name') {
+      e.preventDefault();
+      $('[data-act=saveTable]')?.click();
+    }
   },
 });
 
