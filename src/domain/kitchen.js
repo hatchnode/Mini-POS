@@ -1,6 +1,6 @@
 import { DONE_TICKET_TTL_MS, TICKET_LATE_MINUTES, TICKET_WARN_MINUTES } from '../config.js';
 import { uid } from '../utils/id.js';
-import { orderLabel } from './orders.js';
+import { completeOrder, orderLabel, reopenOrder, unsentCount } from './orders.js';
 
 /**
  * Create a kitchen ticket for everything not yet sent, then mark it sent.
@@ -27,10 +27,44 @@ export function createTicket(data, order, now = Date.now()) {
   return ticket;
 }
 
-export function setTicketDone(ticket, done, now = Date.now()) {
-  ticket.done = done;
-  ticket.doneAt = done ? now : null;
+const findOrder = (data, ticket) => data.orders.find((o) => o.id === ticket.orderId);
+
+/** Open tickets for an order. */
+export const pendingTickets = (data, orderId) => data.tickets.filter((t) => t.orderId === orderId && !t.done);
+
+/**
+ * True when marking this ticket ready will complete its order:
+ * the order is open, this is its last open ticket, and nothing is waiting to be sent.
+ */
+export function completesOrder(data, ticket) {
+  const order = findOrder(data, ticket);
+  if (!order || order.status !== 'open' || ticket.done) return false;
+  return pendingTickets(data, order.id).every((t) => t === ticket) && unsentCount(order) === 0;
 }
+
+/** Mark a ticket ready. Returns the order if this completed it, otherwise null. */
+export function markTicketReady(data, ticket, now = Date.now()) {
+  const willComplete = completesOrder(data, ticket);
+  ticket.done = true;
+  ticket.doneAt = now;
+  if (!willComplete) return null;
+  const order = findOrder(data, ticket);
+  completeOrder(order, now);
+  return order;
+}
+
+/** Send a ticket back to the kitchen. Returns the order if it was reopened, otherwise null. */
+export function recallTicket(data, ticket) {
+  ticket.done = false;
+  ticket.doneAt = null;
+  const order = findOrder(data, ticket);
+  if (!order || order.status !== 'completed') return null;
+  reopenOrder(order);
+  return order;
+}
+
+/** Order ids that already have a pending ticket count as "in kitchen". */
+export const isInKitchen = (data, orderId) => pendingTickets(data, orderId).length > 0;
 
 export function pruneTickets(data, now = Date.now()) {
   data.tickets = data.tickets.filter((t) => !t.done || now - (t.doneAt || t.createdAt) < DONE_TICKET_TTL_MS);

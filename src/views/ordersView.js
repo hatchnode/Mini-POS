@@ -1,3 +1,4 @@
+import { isInKitchen } from '../domain/kitchen.js';
 import { calcTotals, itemCount, openOrders, orderLabel, unsentCount } from '../domain/orders.js';
 import { currentOrder, store } from '../state/store.js';
 import { categoryColor, categoryIndex, money } from '../ui/format.js';
@@ -31,7 +32,13 @@ function tablesPanel(order, open) {
     tables += `<button class="tbl ${o ? 'busy' : ''} ${selected ? 'sel' : ''}" data-act="selectTable" data-n="${n}" aria-label="Table ${n}">
       ${n}<small>${o ? money(calcTotals(o).total) : 'free'}</small></button>`;
   }
-  const others = open.filter((o) => o.table == null || o.table > count);
+  // Takeaways, tables beyond the current table count, and a second open order on an occupied
+  // table (e.g. a recalled order) are listed separately so none is hidden.
+  const firstOnTable = new Map();
+  open.forEach((o) => {
+    if (o.table != null && !firstOnTable.has(o.table)) firstOnTable.set(o.table, o);
+  });
+  const others = open.filter((o) => o.table == null || o.table > count || firstOnTable.get(o.table) !== o);
   const otherList = others
     .map(
       (o) =>
@@ -95,7 +102,10 @@ function ticketPanel(order) {
   const t = calcTotals(order);
   const unsent = unsentCount(order);
   const hasLines = order.lines.length > 0;
-  const row = (label, cents) => `<div class="row"><span>${label}</span><span>${money(cents)}</span></div>`;
+  const inKitchen = isInKitchen(store.data, order.id);
+  let status = '';
+  if (inKitchen && !unsent) status = 'In the kitchen. This order completes when the kitchen marks it ready.';
+  else if (inKitchen) status = 'Part of this order is in the kitchen. Send the new items too.';
 
   return `<div class="panel-h">
       <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · opened ${timeStr(order.createdAt)}</div></div>
@@ -106,15 +116,12 @@ function ticketPanel(order) {
     </div>
     <div class="scroll panel-b" data-keep="ticket">${hasLines ? order.lines.map(lineRow).join('') : '<div class="empty">No items yet.</div>'}</div>
     <div class="sum">
-      ${t.discount || t.tip ? row('Subtotal', t.subtotal) : ''}
-      ${t.discount ? row('Discount', -t.discount) : ''}
-      ${t.tip ? row('Tip', t.tip) : ''}
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>
     </div>
     <div class="actions">
-      <button class="btn-primary" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>
+      ${status ? `<div class="status-note">${status}</div>` : ''}
+      <button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>
       <button data-act="printBill" ${hasLines ? '' : 'disabled'}>Print bill</button>
-      <button class="btn-ok wide" data-act="openCheckout" ${hasLines ? '' : 'disabled'}>Pay ${money(t.total)}</button>
     </div>`;
 }
 

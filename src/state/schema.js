@@ -42,6 +42,18 @@ export function createSeedData() {
   };
 }
 
+/**
+ * v3: there is no payment step. Orders that were "paid" become "completed",
+ * and `paidAt` becomes `completedAt`.
+ */
+function migrateOrder(order) {
+  const o = { ...order };
+  if (o.paidAt != null && o.completedAt == null) o.completedAt = o.paidAt;
+  delete o.paidAt;
+  if (o.status === 'paid') o.status = 'completed';
+  return o;
+}
+
 /** Bring stored or imported data up to the current schema. */
 export function migrate(raw) {
   const data = { ...raw };
@@ -50,7 +62,7 @@ export function migrate(raw) {
   data.settings = settings;
   data.categories = Array.isArray(raw.categories) ? raw.categories : [];
   data.items = Array.isArray(raw.items) ? raw.items : [];
-  data.orders = Array.isArray(raw.orders) ? raw.orders : [];
+  data.orders = Array.isArray(raw.orders) ? raw.orders.map(migrateOrder) : [];
   data.tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
   data.seq = Number(raw.seq) || 1;
   data.version = SCHEMA_VERSION;

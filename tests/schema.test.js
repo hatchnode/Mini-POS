@@ -12,11 +12,26 @@ describe('schema', () => {
 
   it('migrates v1 data by dropping the tax setting and filling defaults', () => {
     const d = migrate({ version: 1, settings: { name: 'Cafe', taxRate: 8 }, items: [], categories: [] });
-    expect(d.version).toBe(2);
+    expect(d.version).toBe(3);
     expect(d.settings.name).toBe('Cafe');
     expect(d.settings).not.toHaveProperty('taxRate');
     expect(d.orders).toEqual([]);
     expect(d.seq).toBe(1);
+  });
+
+  it('turns paid orders into completed orders', () => {
+    const d = migrate({
+      items: [],
+      categories: [],
+      orders: [
+        { id: 'a', status: 'paid', paidAt: 100 },
+        { id: 'b', status: 'void', paidAt: 200 },
+        { id: 'c', status: 'open' },
+      ],
+    });
+    expect(d.orders[0]).toEqual({ id: 'a', status: 'completed', completedAt: 100 });
+    expect(d.orders[1]).toEqual({ id: 'b', status: 'void', completedAt: 200 });
+    expect(d.orders[2]).toEqual({ id: 'c', status: 'open' });
   });
 
   it('recognises backups', () => {

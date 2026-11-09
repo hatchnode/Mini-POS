@@ -197,14 +197,21 @@
 }
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 0 14px 14px;
 }
 .actions .wide {
-  grid-column: 1 / -1;
   padding: 15px;
   font-size: 18px;
+}
+.status-note {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid #f0d29b;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
 }
 .mobile-bar {
   display: none;

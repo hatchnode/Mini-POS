@@ -5,42 +5,29 @@ import {
   createOrder,
   discardIfEmpty,
   moveOrder,
-  setDiscount,
   setLineQty,
   unsentCount,
   voidOrder,
 } from '../src/domain/orders.js';
-import { createTicket } from '../src/domain/kitchen.js';
+import { completesOrder, createTicket, markTicketReady, recallTicket } from '../src/domain/kitchen.js';
 
 const burger = { id: 'b', name: 'Burger', price: 1250 };
 const fries = { id: 'f', name: 'Fries', price: 450 };
 const emptyData = () => ({ orders: [], tickets: [], seq: 1 });
 
 describe('calcTotals', () => {
-  it('sums lines with no tax', () => {
+  it('is the sum of the lines', () => {
     const order = {
       lines: [
         { price: 1250, qty: 2 },
         { price: 450, qty: 1 },
       ],
-      discount: null,
-      tip: 0,
     };
-    expect(calcTotals(order)).toEqual({ subtotal: 2950, discount: 0, tip: 0, total: 2950 });
-  });
-
-  it('applies a percentage discount then adds the tip', () => {
-    const order = { lines: [{ price: 3600, qty: 1 }], discount: { type: 'pct', value: 10 }, tip: 486 };
-    expect(calcTotals(order)).toEqual({ subtotal: 3600, discount: 360, tip: 486, total: 3726 });
-  });
-
-  it('never discounts below zero', () => {
-    const order = { lines: [{ price: 500, qty: 1 }], discount: { type: 'amt', value: 9999 }, tip: 0 };
-    expect(calcTotals(order).total).toBe(0);
+    expect(calcTotals(order)).toEqual({ subtotal: 2950, total: 2950 });
   });
 });
 
-describe('order lifecycle', () => {
+describe('building an order', () => {
   it('numbers orders and merges repeat items', () => {
     const data = emptyData();
     const order = createOrder(data, 3);
@@ -113,12 +100,65 @@ describe('order lifecycle', () => {
     expect(order.status).toBe('void');
     expect(data.tickets[0].done).toBe(true);
   });
+});
 
-  it('caps percentage discounts at 100 and clears zero discounts', () => {
-    const order = createOrder(emptyData(), 1);
-    setDiscount(order, 'pct', 150);
-    expect(order.discount).toEqual({ type: 'pct', value: 100 });
-    setDiscount(order, 'pct', 0);
-    expect(order.discount).toBeNull();
+describe('kitchen completes orders', () => {
+  it('completes the order when its only ticket is marked ready', () => {
+    const data = emptyData();
+    const order = createOrder(data, 4);
+    addItem(order, burger);
+    addItem(order, fries);
+    const ticket = createTicket(data, order);
+    expect(completesOrder(data, ticket)).toBe(true);
+    expect(markTicketReady(data, ticket, 500)).toBe(order);
+    expect(order.status).toBe('completed');
+    expect(order.completedAt).toBe(500);
+    expect(order.totals.total).toBe(1700);
+  });
+
+  it('waits for every ticket of the order', () => {
+    const data = emptyData();
+    const order = createOrder(data, 4);
+    addItem(order, burger);
+    const first = createTicket(data, order);
+    addItem(order, fries);
+    const second = createTicket(data, order);
+    expect(completesOrder(data, first)).toBe(false);
+    expect(markTicketReady(data, first)).toBeNull();
+    expect(order.status).toBe('open');
+    expect(markTicketReady(data, second)).toBe(order);
+    expect(order.status).toBe('completed');
+  });
+
+  it('stays open while items are waiting to be sent', () => {
+    const data = emptyData();
+    const order = createOrder(data, 4);
+    addItem(order, burger);
+    const ticket = createTicket(data, order);
+    addItem(order, fries); // added but not sent yet
+    expect(markTicketReady(data, ticket)).toBeNull();
+    expect(order.status).toBe('open');
+  });
+
+  it('recalling a ticket reopens a completed order', () => {
+    const data = emptyData();
+    const order = createOrder(data, 4);
+    addItem(order, burger);
+    const ticket = createTicket(data, order);
+    markTicketReady(data, ticket);
+    expect(recallTicket(data, ticket)).toBe(order);
+    expect(order.status).toBe('open');
+    expect(order.completedAt).toBeUndefined();
+    expect(ticket.done).toBe(false);
+  });
+
+  it('does not complete a voided order', () => {
+    const data = emptyData();
+    const order = createOrder(data, 4);
+    addItem(order, burger);
+    const ticket = createTicket(data, order);
+    voidOrder(data, order);
+    expect(markTicketReady(data, ticket)).toBeNull();
+    expect(order.status).toBe('void');
   });
 });

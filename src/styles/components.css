@@ -1,4 +1,4 @@
-/* Reusable pieces: badge, chips, fields, segmented control, modal, toast. */
+/* Reusable pieces: badge, chips, fields, modal, toast. */
 .badge {
   display: inline-block;
   min-width: 18px;
@@ -48,20 +48,6 @@
 .quick button {
   padding: 6px 10px;
   font-size: 14px;
-}
-.seg {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 6px;
-}
-.seg button {
-  padding: 12px;
-}
-.seg button.on {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
 }
 
 /* modal */
@@ -113,26 +99,6 @@
 .mf button {
   padding: 10px 16px;
 }
-.sumbox {
-  background: var(--bg);
-  border-radius: 10px;
-  padding: 12px 14px;
-  display: grid;
-  gap: 4px;
-}
-.center {
-  text-align: center;
-  justify-items: center;
-}
-.huge {
-  font-size: 42px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.huge.ok {
-  color: var(--ok);
-}
 
 /* toast */
 .toast {
@@ -152,10 +118,4 @@
 }
 .toast.show {
   opacity: 1;
-}
-
-@media (max-width: 720px) {
-  .grid2 {
-    grid-template-columns: 1fr 1fr;
-  }
 }

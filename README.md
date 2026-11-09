@@ -1,15 +1,15 @@
 # Mini-POS
 
-A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, works offline, and the production build is about 13 KB of gzipped JavaScript.
+A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, works offline, and the production build is about 11 KB of gzipped JavaScript.
 
 ## Features
 
 - **Tables & takeaway**: tap a table to start or reopen its order; open tables show their running total. Move an order to another table or turn it into a takeaway.
 - **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick presets ("No onions", "Extra spicy", …).
 - **Kitchen screen**: "Send to kitchen" sends only items not sent yet, so add-ons go as a new ticket. Tickets turn amber after 8 minutes and red after 15.
-- **Checkout**: % or fixed discount, tip (10/15/20% buttons), cash / card / other, quick-tender buttons and change due. Prices are final; there is no tax line.
-- **Receipts**: guest bill or paid receipt, laid out for 80 mm thermal printers.
-- **Sales**: any day's total collected, sales excluding tips, tips, discounts, average order, sales by hour, by payment method, top items, and every order with reprint/void. Export to CSV.
+- **No checkout step**: an order is complete, and counts as a sale, when the kitchen marks its last ticket ready. The table frees up straight away. If items were added but not sent yet, the order stays open until they are sent and marked ready too. **Recall** on a ready ticket reopens its order. Prices are final, with no tax, discount or tip.
+- **Receipts**: print a bill for an open order or a receipt for a completed one, laid out for 80 mm thermal printers.
+- **Sales**: any day's total sales, number of orders, average order, items sold, sales by hour, top items, and every completed order with reprint/void. Export to CSV.
 - **Menu editor** and **settings** (name, address line, currency symbol, number of tables, receipt footer).
 - **Backups**: export everything to JSON and import it on another device.
 
@@ -37,7 +37,8 @@ npm run dev        # http://localhost:5173 with hot reload
 
 1. **Settings**: set your restaurant name, currency and number of tables.
 2. **Menu**: delete the sample items and add your own.
-3. **Orders**: tap a table → tap items → **Send to kitchen** → **Pay**.
+3. **Orders**: tap a table → tap items → **Send to kitchen**.
+4. **Kitchen**: tap **Ready · complete order** when the food is done. The order is recorded as a sale and the table is free again.
 
 ## Deploying
 
@@ -62,12 +63,11 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   ├── storage.js       localStorage read/write
 │   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
-│   │   ├── orders.js        Totals, lines, create/move/void orders, discounts
-│   │   ├── kitchen.js       Kitchen tickets, urgency, pruning
-│   │   ├── payments.js      Quick-tender amounts, tip %, completing a payment
+│   │   ├── orders.js        Totals, lines, create/move/complete/void orders
+│   │   ├── kitchen.js       Kitchen tickets; marking the last one ready completes the order
 │   │   └── sales.js         Daily summary, hourly chart range, CSV rows
 │   ├── views/               One render function per screen, returns HTML
-│   ├── components/          Dialogs: checkout, item note, move table
+│   ├── components/          Dialogs: item note, move table
 │   ├── actions/             Event handlers per area, merged in actions/index.js
 │   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, formatting
 │   ├── utils/               Small helpers: money, dates, text escaping, ids, files
@@ -86,7 +86,7 @@ To add a feature: put the rule in `domain/` with a test, add a handler in `actio
 
 ### Data
 
-All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data (for example, version 2 dropped the tax setting). Data saved by the earlier single-file version loads unchanged. Orders paid before tax was removed still show their tax on reprinted receipts.
+All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, and version 3 turned paid orders into completed ones when the payment step was removed. Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
 
 Everything stays **on one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly. Two tabs on the same device stay in sync.
 
@@ -94,5 +94,5 @@ Everything stays **on one device**. Clearing browser data erases it, so use **Se
 
 - Single device: no sync between a front-of-house tablet and a separate kitchen screen.
 - No staff logins or PINs.
-- Card payments are recorded as "Card"; there's no card-terminal integration.
+- No payment tracking: a completed order is assumed to be paid.
 - No inventory, priced modifiers or split bills yet.
