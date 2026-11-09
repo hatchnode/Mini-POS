@@ -1,0 +1,28 @@
+/** Local calendar date as YYYY-MM-DD. */
+export function todayStr(date = new Date()) {
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+/** [start, end) timestamps for a local YYYY-MM-DD date. */
+export function dayRange(dateStr) {
+  const start = new Date(`${dateStr}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return [start.getTime(), end.getTime()];
+}
+
+export const timeStr = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+export const dateTimeStr = (ts) =>
+  new Date(ts).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+export function timeAgo(ts, now = Date.now()) {
+  const mins = Math.floor((now - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+}
+
+export const hourLabel = (h) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
