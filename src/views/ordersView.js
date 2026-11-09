@@ -108,7 +108,7 @@ function ticketPanel(order) {
   else if (inKitchen) status = 'Part of this order is in the kitchen. Send the new items too.';
 
   return `<div class="panel-h">
-      <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · opened ${timeStr(order.createdAt)}</div></div>
+      <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}</div></div>
       <div class="inrow">
         ${store.data.settings.tables ? '<button class="small" data-act="moveOrder">Move</button>' : ''}
         <button class="small btn-danger" data-act="voidOrder">Void</button>

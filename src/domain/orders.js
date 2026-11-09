@@ -16,6 +16,10 @@ export const itemCount = (order) => order.lines.reduce((n, l) => n + l.qty, 0);
 export const unsentCount = (order) => order.lines.reduce((n, l) => n + Math.max(0, l.qty - l.sent), 0);
 export const openOrders = (data) => data.orders.filter((o) => o.status === 'open');
 
+/** Milliseconds from ordering to completion, or null if not completed (or no order time recorded). */
+export const orderDuration = (order) =>
+  order.createdAt && order.completedAt ? order.completedAt - order.createdAt : null;
+
 /** `table` is a table number or 'take' for takeaway. */
 export function createOrder(data, table, now = Date.now()) {
   const order = {

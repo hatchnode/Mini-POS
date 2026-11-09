@@ -9,7 +9,8 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Kitchen screen**: "Send to kitchen" sends only items not sent yet, so add-ons go as a new ticket. Tickets turn amber after 8 minutes and red after 15.
 - **No checkout step**: an order is complete, and counts as a sale, when the kitchen marks its last ticket ready. The table frees up straight away. If items were added but not sent yet, the order stays open until they are sent and marked ready too. **Recall** on a ready ticket reopens its order. Prices are final, with no tax, discount or tip.
 - **Receipts**: print a bill for an open order or a receipt for a completed one, laid out for 80 mm thermal printers.
-- **Sales**: any day's total sales, number of orders, average order, items sold, sales by hour, top items, and every completed order with reprint/void. Export to CSV.
+- **Order times**: every order logs when it was ordered and when the kitchen completed it. Sales lists both times and the time taken for each order, plus the day's average time to complete. Receipts and the CSV export include both times.
+- **Sales**: any day's total sales, number of orders, average order, items sold, average time to complete, sales by hour, top items, and every completed order with reprint/void. Export to CSV.
 - **Menu editor** and **settings** (name, address line, currency symbol, number of tables, receipt footer).
 - **Backups**: export everything to JSON and import it on another device.
 

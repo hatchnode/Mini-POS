@@ -1,8 +1,8 @@
-import { calcTotals, itemCount, openOrders, orderLabel } from '../domain/orders.js';
+import { calcTotals, itemCount, openOrders, orderDuration, orderLabel } from '../domain/orders.js';
 import { chartHours, summarizeSales } from '../domain/sales.js';
 import { store } from '../state/store.js';
 import { money } from '../ui/format.js';
-import { dayRange, hourLabel, timeStr, todayStr } from '../utils/date.js';
+import { dayRange, durationStr, hourLabel, timeOnDay, timeStr, todayStr } from '../utils/date.js';
 import { esc } from '../utils/text.js';
 
 const kpi = (label, value) =>
@@ -28,7 +28,9 @@ function ordersTable(orders) {
   const rows = orders
     .map(
       (o) => `<tr class="${o.status === 'void' ? 'void' : ''}">
-        <td>${o.no}</td><td>${timeStr(o.completedAt)}</td><td>${esc(orderLabel(o))}</td>
+        <td>${o.no}</td><td>${esc(orderLabel(o))}</td>
+        <td>${o.createdAt ? timeOnDay(o.createdAt, o.completedAt) : '—'}</td><td>${timeStr(o.completedAt)}</td>
+        <td class="n">${durationStr(orderDuration(o))}</td>
         <td class="n">${itemCount(o)}</td><td class="n">${money(o.totals.total)}</td>
         <td class="acts">
           <button class="small" data-act="printReceipt" data-id="${o.id}">Receipt</button>
@@ -36,7 +38,7 @@ function ordersTable(orders) {
         </td></tr>`,
     )
     .join('');
-  return `<table class="t"><thead><tr><th>#</th><th>Completed</th><th>Order</th><th class="n">Items</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="t"><thead><tr><th>#</th><th>Order</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Items</th><th class="n">Total</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function topItemsTable(items) {
@@ -69,6 +71,7 @@ export function renderSalesView() {
       ${kpi('Orders', s.count)}
       ${kpi('Average order', money(s.average))}
       ${kpi('Items sold', s.itemsSold)}
+      ${kpi('Avg. time to complete', durationStr(s.averageDuration))}
       ${isToday ? kpi('Still open', `${open.length} · ${money(openTotal)}`) : ''}
     </div>
     <div class="split">

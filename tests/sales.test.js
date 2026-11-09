@@ -4,15 +4,24 @@ import { chartHours, salesCsvRows, summarizeSales } from '../src/domain/sales.js
 const at = (h) => new Date(2026, 10, 9, h, 15).getTime();
 const day = [new Date(2026, 10, 9).getTime(), new Date(2026, 10, 10).getTime()];
 
-const completed = (no, h, lines) => {
+/** A completed order that took `mins` minutes from ordering to completion. */
+const completed = (no, h, lines, mins = 10) => {
   const total = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  return { no, table: 1, status: 'completed', completedAt: at(h), lines, totals: { subtotal: total, total } };
+  return {
+    no,
+    table: 1,
+    status: 'completed',
+    createdAt: at(h) - mins * 60000,
+    completedAt: at(h),
+    lines,
+    totals: { subtotal: total, total },
+  };
 };
 
 const orders = [
-  completed(1, 12, [{ name: 'Burger', price: 1250, qty: 2 }]),
-  completed(2, 13, [{ name: 'Coffee', price: 300, qty: 1 }]),
-  { ...completed(3, 14, [{ name: 'Tea', price: 275, qty: 1 }]), status: 'void' },
+  completed(1, 12, [{ name: 'Burger', price: 1250, qty: 2 }], 20),
+  completed(2, 13, [{ name: 'Coffee', price: 300, qty: 1 }], 10),
+  { ...completed(3, 14, [{ name: 'Tea', price: 275, qty: 1 }], 90), status: 'void' },
   { ...completed(4, 9, [{ name: 'Tea', price: 999, qty: 1 }]), completedAt: at(9) - 864e5 }, // previous day
   { no: 5, table: 2, status: 'open', lines: [{ name: 'Fries', price: 450, qty: 1 }] },
 ];
@@ -31,6 +40,14 @@ describe('summarizeSales', () => {
     expect(s.itemsSold).toBe(3);
   });
 
+  it('averages time from order to completion, ignoring voided orders', () => {
+    expect(s.averageDuration).toBe(15 * 60000);
+  });
+
+  it('has no average time when nothing was completed', () => {
+    expect(summarizeSales([], day).averageDuration).toBeNull();
+  });
+
   it('ranks items and groups by hour', () => {
     expect(s.topItems[0]).toEqual({ name: 'Burger', qty: 2, revenue: 2500 });
     expect(s.byHour).toEqual({ 12: 2500, 13: 300 });
@@ -47,9 +64,34 @@ describe('chartHours', () => {
 });
 
 describe('salesCsvRows', () => {
-  it('has no payment, tip or tax columns', () => {
+  it('logs order time, completion time and minutes taken', () => {
     const [header, first] = salesCsvRows(orders.slice(0, 1));
-    expect(header).toEqual(['Order', 'Completed at', 'Order type', 'Items', 'Total', 'Status']);
-    expect(first).toEqual([1, expect.any(String), 'Table 1', '2x Burger', '25.00', 'completed']);
+    expect(header).toEqual([
+      'Order',
+      'Order type',
+      'Ordered at',
+      'Completed at',
+      'Minutes',
+      'Items',
+      'Total',
+      'Status',
+    ]);
+    expect(first).toEqual([
+      1,
+      'Table 1',
+      new Date(at(12) - 20 * 60000).toLocaleString(),
+      new Date(at(12)).toLocaleString(),
+      20,
+      '2x Burger',
+      '25.00',
+      'completed',
+    ]);
+  });
+
+  it('leaves time cells blank for orders without an order time', () => {
+    const noStart = { ...orders[0], createdAt: undefined };
+    const [, row] = salesCsvRows([noStart]);
+    expect(row[2]).toBe('');
+    expect(row[4]).toBe('');
   });
 });

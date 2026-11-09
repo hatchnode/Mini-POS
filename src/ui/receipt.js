@@ -33,7 +33,10 @@ export function printReceipt(order) {
     <div class="rc-c"><div class="rc-name">${esc(s.name)}</div>${s.address ? `<div>${esc(s.address)}</div>` : ''}</div>
     <hr><div class="rc-c">${isOpen ? 'BILL' : 'RECEIPT'}</div>
     <div>Order #${order.no} · ${esc(orderLabel(order))}</div>
-    <div>${dateTimeStr(order.completedAt || Date.now())}</div>
+    <table>
+      ${order.createdAt ? row('Ordered', dateTimeStr(order.createdAt)) : ''}
+      ${order.completedAt ? row('Completed', dateTimeStr(order.completedAt)) : row('Printed', dateTimeStr(Date.now()))}
+    </table>
     ${order.status === 'void' ? '<div class="rc-c"><b>*** VOID ***</b></div>' : ''}
     <hr><table>${lines}</table>
     <hr><table>

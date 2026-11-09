@@ -1,4 +1,4 @@
-import { orderLabel } from './orders.js';
+import { orderDuration, orderLabel } from './orders.js';
 
 /**
  * Summarise orders completed in [start, end).
@@ -12,10 +12,17 @@ export function summarizeSales(allOrders, [start, end]) {
 
   let total = 0;
   let itemsSold = 0;
+  let durationSum = 0;
+  let durationCount = 0;
   const byHour = {};
   const items = {};
   for (const o of completed) {
     total += o.totals.total;
+    const d = orderDuration(o);
+    if (d != null) {
+      durationSum += d;
+      durationCount += 1;
+    }
     const h = new Date(o.completedAt).getHours();
     byHour[h] = (byHour[h] || 0) + o.totals.total;
     for (const l of o.lines) {
@@ -32,6 +39,8 @@ export function summarizeSales(allOrders, [start, end]) {
     total,
     itemsSold,
     average: completed.length ? Math.round(total / completed.length) : 0,
+    /** Average ordered → completed time in ms, or null when there is nothing to average. */
+    averageDuration: durationCount ? Math.round(durationSum / durationCount) : null,
     byHour,
     topItems: Object.values(items)
       .sort((a, b) => b.revenue - a.revenue)
@@ -51,13 +60,16 @@ export function chartHours(byHour) {
 const dec = (c) => (c / 100).toFixed(2);
 
 export function salesCsvRows(orders) {
-  const header = ['Order', 'Completed at', 'Order type', 'Items', 'Total', 'Status'];
+  const header = ['Order', 'Order type', 'Ordered at', 'Completed at', 'Minutes', 'Items', 'Total', 'Status'];
+  const stamp = (ts) => (ts ? new Date(ts).toLocaleString() : '');
   const rows = [...orders]
     .sort((a, b) => a.completedAt - b.completedAt)
     .map((o) => [
       o.no,
-      new Date(o.completedAt).toLocaleString(),
       orderLabel(o),
+      stamp(o.createdAt),
+      stamp(o.completedAt),
+      orderDuration(o) == null ? '' : Math.round(orderDuration(o) / 60000),
       o.lines.map((l) => `${l.qty}x ${l.name}`).join('; '),
       dec(o.totals.total),
       o.status,

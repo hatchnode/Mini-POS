@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { createSeedData, isBackup, migrate } from '../src/state/schema.js';
 import { pruneTickets, ticketUrgency } from '../src/domain/kitchen.js';
 import { formatMoney, parseCents } from '../src/utils/money.js';
+import { durationStr } from '../src/utils/date.js';
+
+describe('durationStr', () => {
+  it('formats order times for people', () => {
+    expect(durationStr(20 * 1000)).toBe('<1 min');
+    expect(durationStr(12 * 60000)).toBe('12 min');
+    expect(durationStr(65 * 60000)).toBe('1h 05m');
+    expect(durationStr(null)).toBe('—');
+  });
+});
 
 describe('schema', () => {
   it('seeds a sample menu without tax', () => {
