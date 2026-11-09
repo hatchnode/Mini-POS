@@ -1,5 +1,13 @@
-import { isInKitchen, lineKitchenStatus } from '../domain/kitchen.js';
-import { calcTotals, itemCount, openOrders, orderLabel, unsentCount } from '../domain/orders.js';
+import { isInKitchen, isServed, lineKitchenStatus } from '../domain/kitchen.js';
+import {
+  balanceDue,
+  calcTotals,
+  isPaid,
+  itemCount,
+  openOrders,
+  orderLabel,
+  unsentCount,
+} from '../domain/orders.js';
 import { findTable, tableLabel } from '../domain/tables.js';
 import { currentOrder, store } from '../state/store.js';
 import { categoryColor, categoryIndex, money } from '../ui/format.js';
@@ -27,10 +35,16 @@ function tableTile(t, firstOpen, order, editing) {
   const { ui } = store;
   const o = firstOpen.get(t.id);
   const selected = !editing && (order?.table === t.id || ui.pendingTable === t.id);
-  const sub = editing ? 'rename' : o ? money(calcTotals(o).total) : 'free';
+  const unpaid = o && isServed(o) && !isPaid(o);
+  let sub = 'free';
+  if (editing) sub = 'rename';
+  else if (unpaid) sub = `unpaid ${money(balanceDue(o))}`;
+  else if (o && isPaid(o)) sub = 'paid';
+  else if (o) sub = money(calcTotals(o).total);
   const cls = [
     'tbl',
     o ? 'busy' : '',
+    unpaid ? 'unpaid' : '',
     selected ? 'sel' : '',
     editing ? 'editing' : '',
     t.name.length > 3 ? 'long' : '',
@@ -55,8 +69,8 @@ function tablesPanel(order, open) {
   const otherList = others
     .map(
       (o) =>
-        `<button class="orow ${order?.id === o.id ? 'sel' : ''}" data-act="openOrder" data-id="${o.id}">
-          <span>${esc(orderLabel(o))} <span class="muted">#${o.no}</span></span><b>${money(calcTotals(o).total)}</b></button>`,
+        `<button class="orow ${order?.id === o.id ? 'sel' : ''} ${isServed(o) && !isPaid(o) ? 'unpaid' : ''}" data-act="openOrder" data-id="${o.id}">
+          <span>${esc(orderLabel(o))} <span class="muted">#${o.no}</span>${isPaid(o) ? ' <span class="pill paid">paid</span>' : ''}</span><b>${money(calcTotals(o).total)}</b></button>`,
     )
     .join('');
 
@@ -153,9 +167,29 @@ function ticketPanel(order) {
   const unsent = unsentCount(order);
   const hasLines = order.lines.length > 0;
   const inKitchen = isInKitchen(order);
+  const served = isServed(order);
+  const paid = isPaid(order);
+  const due = balanceDue(order);
   let status = '';
-  if (inKitchen && !unsent) status = 'In the kitchen. The table frees when every dish is marked ready.';
-  else if (inKitchen) status = 'Some dishes are in the kitchen. Send the new ones too.';
+  let statusCls = '';
+  if (served && !paid) {
+    status = `All dishes served. Take payment of ${money(due)} before the customer leaves.`;
+    statusCls = 'alert';
+  } else if (paid && inKitchen) {
+    status = `Paid. ${order.table ? 'The table frees' : 'The order completes'} when every dish is served.`;
+    statusCls = 'ok';
+  } else if (paid) {
+    status = 'Paid. Send the dishes to the kitchen.';
+    statusCls = 'ok';
+  } else if (inKitchen && !unsent) {
+    status = 'In the kitchen. You can take payment any time.';
+  } else if (inKitchen) {
+    status = 'Some dishes are in the kitchen. Send the new ones too.';
+  } else if (order.paidAt && due) {
+    status = `Items were added after payment. ${money(due)} still to pay.`;
+    statusCls = 'alert';
+  }
+  const canWalkout = !paid && order.dishes?.length;
 
   return `<div class="panel-h">
       <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}</div></div>
@@ -169,9 +203,13 @@ function ticketPanel(order) {
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>
     </div>
     <div class="actions">
-      ${status ? `<div class="status-note">${status}</div>` : ''}
-      <button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>
-      <button data-act="printBill" ${hasLines ? '' : 'disabled'}>Print bill</button>
+      ${status ? `<div class="status-note ${statusCls}">${status}</div>` : ''}
+      ${unsent || !served ? `<button class="btn-primary wide" data-act="sendToKitchen" ${unsent ? '' : 'disabled'}>Send to kitchen${unsent ? ` (${unsent})` : ''}</button>` : ''}
+      ${!paid && hasLines ? `<button class="btn-ok wide" data-act="markPaid" data-id="${order.id}">Mark paid ${money(due)}</button>` : ''}
+      <div class="action-row">
+        <button data-act="printBill" ${hasLines ? '' : 'disabled'}>Print bill</button>
+        ${canWalkout ? `<button class="btn-danger" data-act="markWalkout" data-id="${order.id}">Walked out</button>` : ''}
+      </div>
     </div>`;
 }
 

@@ -23,7 +23,7 @@ describe('schema', () => {
 
   it('migrates v1 data by dropping the tax setting and filling defaults', () => {
     const d = migrate({ version: 1, settings: { name: 'Cafe', taxRate: 8 }, items: [], categories: [] });
-    expect(d.version).toBe(5);
+    expect(d.version).toBe(6);
     expect(d.settings.name).toBe('Cafe');
     expect(d.settings).not.toHaveProperty('taxRate');
     expect(d.orders).toEqual([]);
@@ -40,10 +40,11 @@ describe('schema', () => {
         { id: 'c', status: 'open', lines: [] },
       ],
     });
-    expect(d.orders.map((o) => [o.status, o.completedAt, 'paidAt' in o])).toEqual([
-      ['completed', 100, false],
-      ['void', 200, false],
-      ['open', undefined, false],
+    // v3 renames paid → completed; v6 then records those as paid at completion.
+    expect(d.orders.map((o) => [o.status, o.completedAt, o.paidAt])).toEqual([
+      ['completed', 100, 100],
+      ['void', 200, undefined],
+      ['open', undefined, undefined],
     ]);
   });
 
@@ -136,6 +137,26 @@ describe('schema', () => {
   it('keeps an existing table list', () => {
     const tables = [{ id: 'x', name: 'Patio' }];
     expect(migrate({ items: [], categories: [], tables }).tables).toEqual(tables);
+  });
+
+  it('treats orders completed before payment tracking as paid in full', () => {
+    const d = migrate({
+      version: 5,
+      items: [],
+      categories: [],
+      tables: [],
+      orders: [
+        {
+          id: 'a',
+          status: 'completed',
+          completedAt: 500,
+          lines: [{ price: 450, qty: 2 }],
+          totals: { subtotal: 900, total: 900 },
+          dishes: [],
+        },
+      ],
+    });
+    expect(d.orders[0]).toMatchObject({ paidAt: 500, paidAmount: 900 });
   });
 
   it('recognises backups', () => {

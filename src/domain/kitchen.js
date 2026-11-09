@@ -5,11 +5,12 @@
  *
  * `orderedAt` is when it was sent; `completedAt` is when the kitchen marked it ready (null while
  * cooking). "2× Burger" sent together is one dish. Dishes live on their order (`order.dishes`).
- * When every dish of an order is ready and nothing is waiting to be sent, the order completes.
+ * When every dish is ready and nothing is waiting to be sent, the order is *served*. A served order
+ * completes (and frees its table) only once it is paid; until then it is awaiting payment.
  */
 import { DISH_LATE_MINUTES, DISH_WARN_MINUTES } from '../config.js';
 import { uid } from '../utils/id.js';
-import { completeOrder, reopenOrder, unsentCount } from './orders.js';
+import { completeOrder, isPaid, reopenOrder, unsentCount } from './orders.js';
 
 export const dishesOf = (order) => order.dishes || [];
 export const pendingDishes = (order) => dishesOf(order).filter((d) => !d.completedAt);
@@ -39,32 +40,41 @@ export function sendToKitchen(order, now = Date.now()) {
   return fresh;
 }
 
-/** True when marking `dish` ready will complete its order. */
-export function completesOrder(order, dish) {
+/** Everything sent has been marked ready and nothing is waiting to be sent. */
+export const isServed = (order) =>
+  dishesOf(order).length > 0 && !isInKitchen(order) && unsentCount(order) === 0;
+
+/** True when `dish` is the last one the kitchen has to make for this order. */
+export function isLastDish(order, dish) {
   if (order.status !== 'open' || dish.completedAt) return false;
   return pendingDishes(order).every((d) => d === dish) && unsentCount(order) === 0;
 }
 
-/** Complete the order if the kitchen has nothing left for it. Returns true if it completed. */
+/** Complete the order if it is served and paid. Returns true if it completed. */
 export function completeIfDone(order, now = Date.now()) {
-  if (order.status !== 'open' || !dishesOf(order).length) return false;
-  if (isInKitchen(order) || unsentCount(order) > 0) return false;
+  if (order.status !== 'open' || !isServed(order) || !isPaid(order)) return false;
   completeOrder(order, now);
   return true;
 }
 
-/** Mark one dish ready. Returns { dish, completed } where `completed` says the order finished. */
+/**
+ * Mark one dish ready. Returns { dish, served, completed }: `served` when that was the last dish,
+ * `completed` when the order was also already paid and so finished.
+ */
 export function markDishReady(order, dishId, now = Date.now()) {
   const dish = findDish(order, dishId);
-  if (!dish || dish.completedAt || order.status !== 'open') return { dish: null, completed: false };
+  if (!dish || dish.completedAt || order.status !== 'open') {
+    return { dish: null, served: false, completed: false };
+  }
   dish.completedAt = now;
-  return { dish, completed: completeIfDone(order, now) };
+  const completed = completeIfDone(order, now);
+  return { dish, served: isServed(order), completed };
 }
 
 /** Put a ready dish back in the kitchen. Reopens its order if that order had completed. */
 export function recallDish(order, dishId) {
   const dish = findDish(order, dishId);
-  if (!dish || order.status === 'void') return { dish: null, reopened: false };
+  if (!dish || order.status === 'void' || order.status === 'walkout') return { dish: null, reopened: false };
   dish.completedAt = null;
   if (order.status !== 'completed') return { dish, reopened: false };
   reopenOrder(order);

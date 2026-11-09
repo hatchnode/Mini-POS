@@ -1,4 +1,4 @@
-import { calcTotals, orderLabel } from '../domain/orders.js';
+import { balanceDue, calcTotals, isPaid, orderLabel } from '../domain/orders.js';
 import { store } from '../state/store.js';
 import { $ } from '../utils/dom.js';
 import { dateTimeStr } from '../utils/date.js';
@@ -9,11 +9,13 @@ import { closeButton, openModal } from './modal.js';
 const row = (label, value) => `<tr><td>${label}</td><td class="r">${value}</td></tr>`;
 
 /**
- * Receipt markup for an order. Open orders are a "BILL", completed ones a "RECEIPT".
+ * Receipt markup for an order. Paid orders print as a "RECEIPT"; anything not yet paid is a "BILL"
+ * showing the amount due.
  * Layout lives in styles/print.css and is used both for the on-screen preview and for printing.
  */
 export function receiptHtml(order, now = Date.now()) {
   const isOpen = order.status === 'open';
+  const paid = isPaid(order);
   // Completed orders keep the totals frozen at completion (older data may include discount/tax/tip).
   const t = !isOpen && order.totals ? order.totals : calcTotals(order);
   const s = store.data.settings;
@@ -32,7 +34,7 @@ export function receiptHtml(order, now = Date.now()) {
 
   return `<div class="rc">
     <div class="rc-c"><div class="rc-name">${esc(s.name)}</div></div>
-    <hr><div class="rc-c">${isOpen ? 'BILL' : 'RECEIPT'}</div>
+    <hr><div class="rc-c">${paid ? 'RECEIPT' : 'BILL'}</div>
     <div>Order #${order.no} · ${esc(orderLabel(order))}</div>
     <table>
       ${order.createdAt ? row('Ordered', dateTimeStr(order.createdAt)) : ''}
@@ -43,7 +45,10 @@ export function receiptHtml(order, now = Date.now()) {
     <hr><table>
       ${legacyRows ? row('Subtotal', money(t.subtotal)) + legacyRows : ''}
       ${row('<b>TOTAL</b>', `<b>${money(t.total)}</b>`)}
+      ${paid && order.paidAt ? row('Paid', dateTimeStr(order.paidAt)) : ''}
+      ${isOpen && !paid ? row('<b>AMOUNT DUE</b>', `<b>${money(balanceDue(order))}</b>`) : ''}
     </table>
+    ${order.status === 'walkout' ? '<div class="rc-c"><b>*** NOT PAID · WALKED OUT ***</b></div>' : ''}
     <hr><div class="rc-c rc-contact">
       <div><b>${esc(s.name)}</b></div>
       ${s.address ? `<div>${esc(s.address)}</div>` : ''}
@@ -55,7 +60,7 @@ export function receiptHtml(order, now = Date.now()) {
 
 /** Show the receipt on screen, with a Print button. */
 export function showReceipt(order) {
-  const title = `${order.status === 'open' ? 'Bill' : 'Receipt'} · ${esc(orderLabel(order))} #${order.no}`;
+  const title = `${isPaid(order) ? 'Receipt' : 'Bill'} · ${esc(orderLabel(order))} #${order.no}`;
   openModal(`
     <div class="mh"><h3>${title}</h3>${closeButton}</div>
     <div class="mb"><div class="rc-preview">${receiptHtml(order)}</div></div>

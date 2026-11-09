@@ -340,3 +340,56 @@
   color: var(--ink);
   font-weight: 500;
 }
+
+/* payment status */
+.tbl.unpaid {
+  background: var(--bad-soft);
+  border-color: #f3b4b4;
+}
+.tbl.unpaid small {
+  color: var(--bad);
+  font-weight: 700;
+}
+.orow.unpaid {
+  background: var(--bad-soft);
+  border-color: #f3b4b4;
+}
+.status-note.alert {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: #f3b4b4;
+  font-weight: 600;
+}
+.status-note.ok {
+  background: #e8f6ec;
+  color: var(--ok);
+  border-color: #b7e2c4;
+}
+.action-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.pill.paid {
+  background: #e8f6ec;
+  color: var(--ok);
+}
+.pill.unpaid,
+.pill.served-unpaid,
+.pill.walkout {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.pill.void {
+  background: var(--bg);
+  color: var(--muted);
+}

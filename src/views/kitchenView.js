@@ -1,13 +1,13 @@
 import { READY_LIST_HOURS } from '../config.js';
 import {
-  completesOrder,
+  isLastDish,
   dishDuration,
   dishUrgency,
   kitchenQueue,
   pendingDishCount,
   readyDishes,
 } from '../domain/kitchen.js';
-import { orderLabel } from '../domain/orders.js';
+import { isPaid, orderLabel } from '../domain/orders.js';
 import { store } from '../state/store.js';
 import { durationStr, timeAgo, timeStr } from '../utils/date.js';
 import { esc } from '../utils/text.js';
@@ -15,7 +15,8 @@ import { esc } from '../utils/text.js';
 const noteHtml = (d) => (d.note ? `<div class="note">${esc(d.note)}</div>` : '');
 
 function dishRow(order, d, now) {
-  const label = completesOrder(order, d) ? 'Ready · complete order' : 'Ready';
+  let label = 'Ready';
+  if (isLastDish(order, d)) label = isPaid(order) ? 'Ready · complete order' : 'Ready · last dish';
   return `<li class="dish ${dishUrgency(d, now)}">
     <div class="dish-main">
       <div><b>${d.qty}×</b> ${esc(d.name)}</div>

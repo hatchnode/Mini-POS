@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, DEFAULT_TABLE_COUNT, SCHEMA_VERSION } from '../config.js';
 import { numberedTables } from '../domain/tables.js';
+import { calcTotals } from '../domain/orders.js';
 import { uid } from '../utils/id.js';
 
 const SAMPLE_CATEGORIES = [
@@ -117,6 +118,19 @@ function migrateTable(order) {
   return { ...order, table: `t${order.table}`, tableName: String(order.table) };
 }
 
+/**
+ * v6: bills are paid explicitly. Orders completed before this existed are treated as paid at
+ * completion, so past sales stay the same.
+ */
+function migratePayment(order) {
+  if (order.status !== 'completed' || order.paidAt) return order;
+  return {
+    ...order,
+    paidAt: order.completedAt,
+    paidAmount: order.totals?.total ?? calcTotals({ lines: order.lines || [] }).total,
+  };
+}
+
 /** Bring stored or imported data up to the current schema. */
 export function migrate(raw) {
   const data = { ...raw };
@@ -130,7 +144,7 @@ export function migrate(raw) {
   data.items = Array.isArray(raw.items) ? raw.items : [];
   const tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
   data.orders = Array.isArray(raw.orders)
-    ? raw.orders.map((o) => migrateTable(migrateDishes(migrateOrder(o), tickets)))
+    ? raw.orders.map((o) => migratePayment(migrateTable(migrateDishes(migrateOrder(o), tickets))))
     : [];
   delete data.tickets; // v4: replaced by order.dishes
   data.seq = Number(raw.seq) || 1;

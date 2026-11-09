@@ -12,7 +12,7 @@ export const click = {
     const order = store.data.orders.find((o) => o.id === el.dataset.id);
     if (!order) return;
     confirmDialog({
-      message: `Void completed order #${order.no} (${money(order.totals.total)})? Its dishes will be excluded from sales.`,
+      message: `Void paid bill #${order.no} (${money(order.totals.total)})? It will be removed from paid sales. Refund the customer separately if needed.`,
       confirmLabel: 'Void sale',
       danger: true,
       onConfirm: () => {

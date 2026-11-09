@@ -1,7 +1,7 @@
 /** App-wide constants. Change these to tune behaviour without touching logic. */
 
 export const STORAGE_KEY = 'mini-pos-v1';
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const MAX_TABLES = 100;
 /** Tables in a fresh install. */
