@@ -5,6 +5,7 @@ import { esc } from '../utils/text.js';
 
 let pending = null;
 let digits = '';
+let checking = false;
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
 
@@ -30,8 +31,8 @@ function draw(error = '') {
 }
 
 /**
- * Ask for a PIN on a keypad. `check(pin)` returns something truthy when the PIN is right (it is
- * passed on to `onOk`), or a falsy value to ask again.
+ * Ask for a PIN on a keypad. `check(pin)` returns (or resolves to) something truthy when the PIN
+ * is right (it is passed on to `onOk`), or a falsy value or `{ error }` to ask again.
  */
 export function openPinDialog({ title, hint = '', check, onOk }) {
   pending = { title, hint, check, onOk };
@@ -41,19 +42,26 @@ export function openPinDialog({ title, hint = '', check, onOk }) {
 
 export const isPinDialogOpen = () => !!pending && !!$('#modal-root .pin-pad');
 
-/** A keypad button or keyboard key: a digit, or 'back'. */
-export function pinKey(key) {
-  if (!isPinDialogOpen()) return;
+/**
+ * A keypad button or keyboard key: a digit, or 'back'. `check` may answer later (the server
+ * checks PINs when there is one) and may return `{ error }` to explain a refusal.
+ */
+export async function pinKey(key) {
+  if (!isPinDialogOpen() || checking) return;
   if (key === 'back') digits = digits.slice(0, -1);
   else if (digits.length < PIN_LENGTH) digits += key;
-  if (digits.length < PIN_LENGTH) return draw();
-  const result = pending.check(digits);
-  if (!result) {
+  draw();
+  if (digits.length < PIN_LENGTH) return;
+  checking = true;
+  const asked = pending;
+  const result = await asked.check(digits);
+  checking = false;
+  if (pending !== asked || !isPinDialogOpen()) return; // closed while waiting
+  if (!result || result.error) {
     digits = '';
-    return draw('Wrong PIN. Try again.');
+    return draw(result?.error || 'Wrong PIN. Try again.');
   }
-  const { onOk } = pending;
   pending = null;
   closeModal();
-  onOk(result);
+  asked.onOk(result);
 }

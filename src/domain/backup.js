@@ -108,6 +108,7 @@ const COLUMNS = {
     col('cash_counted', 'counted', 'money'),
   ],
   log: [
+    col('id', 'id'),
     col('at', 'at', 'time'),
     col('type', 'type'),
     col('what', 'text', 'str', 'empty'),

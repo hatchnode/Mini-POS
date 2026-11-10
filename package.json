@@ -1,6 +1,6 @@
 {
   "name": "mini-pos",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Lightweight point-of-sale for small restaurants. Runs in the browser, works offline.",
   "private": true,
   "type": "module",
@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "server": "node server/index.js",
+    "start": "vite build && node server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -23,6 +25,6 @@
     "vitest": "^5.1.0"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   }
 }

@@ -277,3 +277,16 @@
 .mf.wrap {
   flex-wrap: wrap;
 }
+
+/* connecting a device to the server */
+.lock.connect form {
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+}
+.connect-error {
+  color: var(--bad);
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 20px;
+}
