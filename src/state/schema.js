@@ -165,7 +165,10 @@ export function migrate(raw) {
   data.staff = Array.isArray(raw.staff) ? raw.staff : [];
   data.customers = Array.isArray(raw.customers) ? raw.customers : [];
   data.drawer = raw.drawer && typeof raw.drawer === 'object' ? raw.drawer : {};
-  data.log = Array.isArray(raw.log) ? raw.log : [];
+  // Entries logged before they had ids get a fixed one, so every device names them the same.
+  data.log = (Array.isArray(raw.log) ? raw.log : []).map((e, i) =>
+    e.id ? e : { id: `log-${e.at}-${i}`, ...e },
+  );
   data.version = SCHEMA_VERSION;
   return data;
 }

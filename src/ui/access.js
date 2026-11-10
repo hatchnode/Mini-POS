@@ -6,6 +6,7 @@
 import { openPinDialog } from '../components/pinDialog.js';
 import { logEvent } from '../domain/log.js';
 import { isManager, managerByPin, staffEnabled } from '../domain/staff.js';
+import { approve, server } from '../state/server.js';
 import { currentStaff, staffName, store } from '../state/store.js';
 
 /** Staff are set up and nobody is signed in: only the lock screen is shown. */
@@ -22,7 +23,12 @@ export function withManager(what, fn) {
   openPinDialog({
     title: 'Manager PIN needed',
     hint: `Ask a manager to enter their PIN to ${what}.`,
-    check: (pin) => managerByPin(store.data, pin),
+    // With a server, the server checks the PIN and lets the next change from this device through.
+    check: async (pin) => {
+      if (server.mode !== 'server') return managerByPin(store.data, pin);
+      const result = await approve(pin);
+      return result.ok ? result.manager : { error: result.error };
+    },
     onOk: fn,
   });
 }

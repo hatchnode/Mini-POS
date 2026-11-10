@@ -43,9 +43,9 @@ export const onSaveError = (fn) => {
 };
 
 /** Called after every save, e.g. to copy the data to the data folder. */
-let afterSave = () => {};
+const afterSave = [];
 export const onSave = (fn) => {
-  afterSave = fn;
+  afterSave.push(fn);
 };
 
 export function save() {
@@ -53,11 +53,19 @@ export function save() {
     store.storageOK = false;
     saveErrorHandler();
   }
-  afterSave();
+  afterSave.forEach((fn) => fn());
 }
 
+/** With a server, the staff list belongs to the server: restoring a backup must not replace it. */
+let serverOwnsStaff = false;
+export const setServerOwnsStaff = (value) => {
+  serverOwnsStaff = value;
+};
+
 export function replaceData(raw) {
+  const staff = store.data.staff;
   store.data = migrate(raw);
+  if (serverOwnsStaff) store.data.staff = staff;
   clearSelection();
   store.ui.category = 'all';
 }

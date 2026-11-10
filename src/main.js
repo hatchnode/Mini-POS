@@ -5,12 +5,13 @@ import { isPinDialogOpen, pinKey } from './components/pinDialog.js';
 import { STORAGE_KEY } from './config.js';
 import { backupFiles } from './domain/backup.js';
 import { initFolder, onFolderChange, scheduleFolderSave } from './state/folder.js';
+import { detectServer, onServerEvent, scheduleSync } from './state/server.js';
 import { onSave, onSaveError, replaceData, store } from './state/store.js';
 import { renderFolderStatus } from './ui/folderStatus.js';
 import { startClock } from './ui/clock.js';
 import { bindEvents } from './ui/events.js';
 import { closeModal, isModalOpen } from './ui/modal.js';
-import { render } from './ui/render.js';
+import { render, renderServerBanner } from './ui/render.js';
 import { toast } from './ui/toast.js';
 import { unlockAudio } from './ui/sound.js';
 import { $ } from './utils/dom.js';
@@ -65,6 +66,21 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 onFolderChange(renderFolderStatus);
 onSave(() => scheduleFolderSave(() => backupFiles(store.data)));
 initFolder().then(() => scheduleFolderSave(() => backupFiles(store.data)));
+
+// When the app is served by a Mini-POS server: connect, then keep in step with the other devices.
+const typing = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+onServerEvent({
+  change: () => (isModalOpen() || typing() ? renderServerBanner() : render()),
+  // Don't redraw under someone who is typing or in a dialog; the next action redraws anyway.
+  applied: () => (isModalOpen() || typing() ? null : render()),
+  rejected: (list) => {
+    const real = list.filter((r) => !['settings', 'meta'].includes(r.collection));
+    if (real.length) toast(`Not saved: ${real[0].reason.toLowerCase()}`, 3500);
+    if (!isModalOpen()) render();
+  },
+});
+onSave(() => scheduleSync());
+detectServer();
 
 startClock();
 render();

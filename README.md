@@ -1,6 +1,6 @@
 # Mini-POS
 
-A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, opens and works with no internet, and the production build is about 32 KB of gzipped JavaScript.
+A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs in the browser and works with no internet. Use it on one device with nothing else to install, or run the included **server** on one computer so several tablets and a kitchen screen share the same data over the restaurant's Wi-Fi, with a real database and server-checked sign-in. No internet is needed either way.
 
 ## Features
 
@@ -20,6 +20,7 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Customers and rewards**: on a ticket tap **+ Add customer** to look up a regular by name or phone, or add a new one. Nothing is ever sent to them. Each paid bill counts as a visit; after a set number of visits (10 by default) the ticket shows **Reward due**, and tapping it adds the reward (e.g. "Free drink") as a free line that goes to the kitchen and prints on the receipt. **Sales → Customers** lists everyone with visits, money spent, last visit and reward progress.
 - **Staff sign-in (optional)**: in **Settings → Staff & PINs** add yourself first (you become the manager), then your staff, each with a 4-digit PIN. From then on the app asks who is working, puts that name on orders, payments and receipts, and keeps these for managers: voiding orders and paid bills, recording walk-outs, removing dishes already sent to the kitchen, editing tables, and the Sales, Menu and Settings screens. A staff member can still do one of those if a manager types their PIN. Tap your name in the header to lock or switch user. An **activity log** in Settings records voids, walk-outs, removed dishes, rewards and staff changes, with who did it and who approved it.
 - **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound, ways to pay, low-stock level, reward rule). The bottom of every receipt shows the restaurant name, location and phone.
+- **Several devices, one database (optional)**: run the included server on one computer in the restaurant. Tablets and a kitchen screen open it over the local network and stay in step within a moment of each other; data is kept in a SQLite database on that computer. Each device connects once with the **owner password**, staff PINs are checked by the server, and manager-only actions are enforced there. A device that loses the server keeps working and sends its changes when it is back. See [Running the server](#running-the-server).
 - **Data folder**: in **Settings → Data**, choose a folder on the computer and the app keeps a copy of everything there as CSV files, updated a moment after every change. The files survive clearing the browser's data, open in Excel, and can be copied to a USB stick. Needs Chrome or Edge on a computer (see [Where the data lives](#where-the-data-lives)).
 - **Backups in CSV**: **Export backup (CSV)** downloads one ZIP with a CSV file per kind of record (menu, orders, order lines, dishes, payments, customers, staff, settings…). **Import backup** restores from that ZIP, or from the CSV files selected together, on this or another device. Settings shows when you last made one.
 - **Works with no internet**: once the app has been opened online, it is saved on the device and opens without a connection. It can be installed to the home screen like an app.
@@ -48,7 +49,7 @@ Taken with sample data ("Corner Bistro"). The image files are in [`docs/screensh
 
 ## Getting started
 
-Requires Node.js 22.12 or newer (see `engines` in package.json).
+Requires Node.js 22.13 or newer (see `engines` in package.json).
 
 ```bash
 npm install
@@ -76,7 +77,42 @@ npm run dev        # http://localhost:5173 with hot reload
 5. **Pay**: tap **Mark paid** on the ticket (or in Sales → Awaiting payment), then **Paid**. The table frees once it is served and paid.
 6. **Close the day**: in **Sales**, count the cash into the **Cash drawer** box and print the **Day report**.
 
-## Deploying
+## Running the server
+
+For more than one device, or to keep the data in a database instead of a browser. Needs Node.js 22.13 or newer on one computer that stays on during service; nothing else to install and no internet.
+
+```bash
+npm install
+npm start          # builds the app, then starts the server on port 8080
+```
+
+The server prints the addresses to open, for example `http://192.168.1.20:8080` for other devices on the same Wi-Fi. (`npm run server` starts it without rebuilding; `--port 9000` and `--data /path/to/folder` change the port and where data is kept.)
+
+1. **First run**: open the app on the server computer and choose the **owner password** (at least 8 characters). If that browser already had Mini-POS data, it is copied to the server.
+2. **Each other device**: open the address, enter the owner password and a name for the device ("Kitchen screen"). It then shows the server's data. This is needed once per device.
+3. **Staff**: add them in **Settings → Staff & PINs**. A device with nobody signed in shows only the "Who is working?" screen.
+
+### What the server keeps and protects
+
+- **Database**: `data/mini-pos.db`, a single SQLite file. Each order, menu item, customer and so on is a row in `records`; the views `orders`, `order_lines`, `payments` and `menu_items` show them as ordinary columns in any SQLite tool. A copy of the database is written to `data/backups/` once a day and kept for two weeks. To move the restaurant to another computer, stop the server and copy the `data` folder.
+- **Owner password**: stored only as a salted scrypt hash. A device without it gets no data at all. Five wrong tries lock that device's address out for a minute. Changing it (Settings → Server) disconnects every other device.
+- **Staff PINs**: stored only on the server, as salted hashes, and never sent to a device. Five wrong tries lock the device for a minute. **Forgot the manager PIN?** needs the owner password.
+- **Manager-only actions** (voids, walk-outs, removing dishes already sent, menu, tables, settings, cash drawer) are checked by the server for every change, so a tampered app on a staff device cannot do them. A manager's PIN approves one change.
+- **The activity log** can be added to but not edited.
+- **Two devices, same record**: if two devices change the same order at the same moment, the first to reach the server wins and the other is shown the server's version with a "Not saved" message. Different orders never clash. Two bills opened at the same moment get different numbers.
+
+### HTTPS
+
+By default the server uses plain HTTP, which is readable by anyone who can listen in on the Wi-Fi, so use a network with a password that customers don't have. To encrypt it, put `cert.pem` and `key.pem` in the `data` folder and restart; the server then uses HTTPS. A self-signed pair can be made with:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=mini-pos" \
+  -keyout data/key.pem -out data/cert.pem
+```
+
+Each device will show a warning the first time, because the certificate is your own; accept it once. Over plain HTTP, browsers on other devices also switch off two extras: opening the app with no connection at all, and the data folder. Orders taken while the server is unreachable still work, as long as the page stays open.
+
+## Deploying (one device, no server)
 
 `npm run build` produces a static `dist/` folder with relative paths, so it can be hosted anywhere static: GitHub Pages, Netlify, Cloudflare Pages, or any web server. On a tablet, open the URL and use **Add to Home Screen** to run it full-screen.
 
@@ -102,6 +138,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   ├── schema.js        Seed data, migrations between data versions, backup check
 │   │   ├── storage.js       localStorage read/write
 │   │   ├── folder.js        Data folder: keeps CSV files on the computer up to date
+│   │   ├── server.js        Connection to the server: connect, sign in, send and receive changes
 │   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
 │   │   ├── orders.js        Totals, lines, create/move/complete/void orders
@@ -115,6 +152,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   ├── drawer.js        Cash drawer: float, expected and counted cash
 │   │   ├── log.js           Activity log of sensitive actions
 │   │   ├── backup.js        All data as CSV files (one per kind of record) and back
+│   │   ├── syncDocs.js      The data as separate records for the server, and what changed
 │   │   ├── insights.js      Trends over 7 or 30 days; best sellers for the Popular tab
 │   │   └── sales.js         Summary for a day or period, payment split, hourly chart range, CSV rows
 │   ├── views/               One render function per screen, returns HTML
@@ -123,6 +161,13 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   ├── ui/                  render(), event delegation, modal, toast, receipt, day report, clock, alarm banner and sound, access checks, formatting
 │   ├── utils/               Small helpers: money, dates, text escaping, ids, files and CSV, ZIP
 │   └── styles/              CSS split by area, imported via styles/index.css
+├── server/                  Optional server for several devices (no dependencies)
+│   ├── index.js             Start-up: port, data folder, daily backups, HTTPS if a certificate is present
+│   ├── app.js               HTTP: serves the app, connects devices, staff sign-in, sync, live updates
+│   ├── store.js             The SQLite database
+│   ├── sync.js              Applies a device's changes; refuses ones based on an old copy
+│   ├── rules.js             What staff, managers and signed-out devices may change
+│   └── auth.js              Password and PIN hashing, device tokens, lock-out after wrong tries
 ├── tools/                   Build step that writes the offline service worker
 └── tests/                   Vitest unit tests for domain, schema and utils
 ```
@@ -142,7 +187,7 @@ All money is integer cents. Data is stored under the localStorage key `mini-pos-
 
 ### Where the data lives
 
-There is no database server. The app works from a copy of the data in the browser (localStorage), which is what makes it fast and usable with no internet. Clearing the browser's data erases that copy, so keep a second one outside the browser:
+With the [server](#running-the-server), the data lives in its SQLite database and each device keeps a working copy. Without it, the app works from a copy of the data in the browser (localStorage), which is what makes it fast and usable with no internet. Clearing the browser's data erases that copy, so keep a second one outside the browser:
 
 - **Data folder** (Chrome or Edge on a computer): **Settings → Data → Choose data folder…**. From then on every change is written to CSV files in that folder within about a second. After the browser restarts it may show "Saving to your data folder is paused" with a **Resume saving** button: the browser wants one click before it lets a web page write to your disk again. If the browser's data is ever lost, choose the same folder again and pick **Keep the folder's data**. **Load from folder** does the same on demand.
 - **Backup ZIP** (any browser, including tablets): **Export backup (CSV)**, and keep the file somewhere safe.
@@ -163,12 +208,13 @@ Amounts are plain decimals (`12.50`) and times are ISO dates in UTC (`2026-11-10
 
 The folder is a copy, not a shared database: the app reads it only when you ask (**Load from folder**, or when choosing a folder that already has data), so two computers pointing at the same folder would overwrite each other.
 
-Everything stays **on one device**. Two tabs on the same device stay in sync.
+Without the server, everything stays **on one device**. Two tabs on the same device stay in sync.
 
 ## Limits
 
-- Single device: no sync between a front-of-house tablet and a separate kitchen screen.
-- Staff PINs deter casual misuse on a shared tablet; they are not strong security. Everything is stored in the browser, a 4-digit PIN can be guessed, and **Forgot the manager PIN?** on the lock screen turns sign-in off (this is recorded in the activity log, so it can't be done unnoticed).
+- Without the server: a single device, and staff PINs only deter casual misuse (everything is in the browser, and **Forgot the manager PIN?** turns sign-in off, recorded in the activity log).
+- With the server: one restaurant per server, on a local network. It is not built to be put on the public internet. Every connected device can read all the data (the app hides Sales, Menu and Settings from staff, but the device holds a copy). A 4-digit PIN is protected by the lock-out, not by its length.
+- The server uses Node's built-in SQLite support, which Node still labels experimental and prints a warning about at start-up.
 - Payment is a record of how the customer paid: no card-terminal integration, split bills or part payments.
 - Stock is counted per menu item (portions), not per ingredient, and is updated by hand.
 - No priced modifiers, discounts, tax or tips.

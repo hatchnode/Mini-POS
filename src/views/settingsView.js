@@ -2,10 +2,11 @@ import { pinInput } from '../components/staffPinDialog.js';
 import { recentLog } from '../domain/log.js';
 import { ROLE_LABEL } from '../domain/staff.js';
 import { folder, folderSupported } from '../state/folder.js';
+import { server } from '../state/server.js';
 import { store } from '../state/store.js';
 import { folderStatusHtml } from '../ui/folderStatus.js';
-import { dateTimeStr, timeAgo } from '../utils/date.js';
-import { esc } from '../utils/text.js';
+import { dateTimeStr, timeAgo, timeStr } from '../utils/date.js';
+import { esc, plural } from '../utils/text.js';
 
 const roleOptions = (selected) =>
   Object.entries(ROLE_LABEL)
@@ -31,6 +32,10 @@ function staffPanel() {
   const intro = staff.length
     ? 'Staff sign in with their name and PIN. Voids, walk-outs, removing dishes already sent to the kitchen, and the Sales, Menu and Settings screens need a manager (or a manager’s PIN).'
     : 'Optional. Add yourself first (you become the manager) to make everyone sign in with a PIN. Until then, anyone can use every screen.';
+  const strength =
+    server.mode === 'server'
+      ? 'PINs are checked by the server, which locks a device for a minute after five wrong tries. Manager-only actions are enforced by the server.'
+      : 'PINs deter casual misuse on a shared tablet; they are not strong security.';
   return `<section class="panel"><div class="panel-h"><h2>Staff &amp; PINs</h2><span class="muted small">${staff.length ? `${staff.length} · sign-in on` : 'sign-in off'}</span></div>
     <div class="panel-b form">
       <p class="muted flush">${intro}</p>
@@ -42,7 +47,7 @@ function staffPanel() {
       </form>
     </div>
     ${rows ? `<div class="tablewrap"><table class="t"><thead><tr><th>Name</th><th>Role</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
-    <div class="panel-b"><p class="muted small flush">PINs deter casual misuse on a shared tablet; they are not strong security.</p></div>
+    <div class="panel-b"><p class="muted small flush">${strength}</p></div>
   </section>`;
 }
 
@@ -61,6 +66,24 @@ function logPanel() {
         : '<div class="empty">Nothing recorded yet.</div>'
     }
   </section>`;
+}
+
+/** Only when the app is served by a Mini-POS server: connection, owner password, this device. */
+function serverPanel() {
+  if (server.mode !== 'server') return '';
+  let state = `<b class="good">Connected</b> as “${esc(server.device)}”`;
+  if (!server.online) state = '<b class="bad">Server not reachable.</b> Working from this device’s copy';
+  const waiting = server.pending ? ` · ${plural(server.pending, 'change')} waiting to be sent` : '';
+  const synced = server.lastSyncAt ? ` · last in step ${timeStr(server.lastSyncAt)}` : '';
+  return `<section class="panel"><div class="panel-h"><h2>Server</h2><span class="muted small">${esc(location.host)}</span></div>
+    <div class="panel-b form">
+      <p class="flush">${state}${waiting}${synced}</p>
+      <p class="muted small flush">Data is kept in the server’s database and shared by every connected device. The server makes its own daily copy of the database. A device needs the owner password once to connect.</p>
+      <div class="inrow wrap">
+        <button data-act="changePassword">Change owner password</button>
+        <button class="btn-danger" data-act="disconnectDevice">Disconnect this device</button>
+      </div>
+    </div></section>`;
 }
 
 function folderButtons() {
@@ -155,5 +178,5 @@ export function renderSettingsView() {
       <p class="muted small flush">Last backup: ${data.lastBackupAt ? `${dateTimeStr(data.lastBackupAt)} (${timeAgo(data.lastBackupAt)})` : '<b class="bad">never</b>. Export one now and keep it somewhere safe.'}</p>
       <p class="muted small flush">Works with no internet: ${offlineNote()}</p>
     </div></section>
-  </div><div class="two even">${staffPanel()}${logPanel()}</div></div>`;
+  </div><div class="two even">${staffPanel()}${logPanel()}</div>${serverPanel()}</div>`;
 }
