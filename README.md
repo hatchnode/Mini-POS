@@ -23,6 +23,28 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Backups**: export everything to JSON and import it on another device. Settings shows when you last made one.
 - **Works with no internet**: once the app has been opened online, it is saved on the device and opens without a connection. It can be installed to the home screen like an app.
 
+## Screenshots
+
+Taken with sample data ("Corner Bistro"). The image files are in [`docs/screenshots/`](docs/screenshots).
+
+| Screen                                                         | What it shows                                                                                                        |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| [Orders](docs/screenshots/orders.png)                          | Tables, menu tiles with stock ("2 left", "Sold out"), the Popular tab, and a ticket with a customer and a reward due |
+| [Mark paid](docs/screenshots/mark-paid.png)                    | The payment confirmation                                                                                             |
+| [Kitchen](docs/screenshots/kitchen.png)                        | Dishes cooking, grouped by table                                                                                     |
+| [Sales · Day](docs/screenshots/sales-day.png)                  | The day's figures, bills awaiting payment and the cash drawer                                                        |
+| [Day report](docs/screenshots/day-report.png)                  | The printable end-of-day report                                                                                      |
+| [Sales · Trends](docs/screenshots/sales-trends.png)            | The last 7 days against the week before, best sellers, busiest hours                                                 |
+| [Sales · Customers](docs/screenshots/customers.png)            | Regular customers with visits, spend and reward progress                                                             |
+| [Menu](docs/screenshots/menu-stock.png)                        | The menu editor with the **Left** (stock) column                                                                     |
+| [Settings · Staff & PINs](docs/screenshots/settings-staff.png) | The staff list and the activity log                                                                                  |
+| [Lock screen](docs/screenshots/lock-screen.png)                | "Who is working?" when staff sign-in is on                                                                           |
+| [Manager PIN](docs/screenshots/manager-pin.png)                | A manager approving a staff member's void                                                                            |
+
+![Orders screen](docs/screenshots/orders.png)
+
+![Sales trends](docs/screenshots/sales-trends.png)
+
 ## Getting started
 
 Requires Node.js 22.12 or newer (see `engines` in package.json).
