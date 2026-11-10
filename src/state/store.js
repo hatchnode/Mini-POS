@@ -42,12 +42,18 @@ export const onSaveError = (fn) => {
   saveErrorHandler = fn;
 };
 
+/** Called after every save, e.g. to copy the data to the data folder. */
+let afterSave = () => {};
+export const onSave = (fn) => {
+  afterSave = fn;
+};
+
 export function save() {
-  if (!store.storageOK) return;
-  if (!writeStoredData(store.data)) {
+  if (store.storageOK && !writeStoredData(store.data)) {
     store.storageOK = false;
     saveErrorHandler();
   }
+  afterSave();
 }
 
 export function replaceData(raw) {

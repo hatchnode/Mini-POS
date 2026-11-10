@@ -3,6 +3,7 @@ import { MANAGER_VIEWS } from '../domain/staff.js';
 import { currentStaff, store } from '../state/store.js';
 import { canManage, isLocked } from './access.js';
 import { renderAlarmBanner } from './alarm.js';
+import { renderFolderStatus } from './folderStatus.js';
 import { $, $$ } from '../utils/dom.js';
 import { renderKitchenView } from '../views/kitchenView.js';
 import { renderLockView } from '../views/lockView.js';
@@ -49,6 +50,7 @@ export function render() {
 
   $('#app').innerHTML = locked ? renderLockView() : (VIEWS[ui.view] || renderOrdersView)();
   renderAlarmBanner();
+  renderFolderStatus();
 
   $$('[data-keep]').forEach((el) => {
     if (scroll[el.dataset.keep] != null) el.scrollTop = scroll[el.dataset.keep];

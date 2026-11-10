@@ -1,6 +1,6 @@
 # Mini-POS
 
-A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, opens and works with no internet, and the production build is under 30 KB of gzipped JavaScript.
+A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, opens and works with no internet, and the production build is about 32 KB of gzipped JavaScript.
 
 ## Features
 
@@ -20,7 +20,8 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 - **Customers and rewards**: on a ticket tap **+ Add customer** to look up a regular by name or phone, or add a new one. Nothing is ever sent to them. Each paid bill counts as a visit; after a set number of visits (10 by default) the ticket shows **Reward due**, and tapping it adds the reward (e.g. "Free drink") as a free line that goes to the kitchen and prints on the receipt. **Sales → Customers** lists everyone with visits, money spent, last visit and reward progress.
 - **Staff sign-in (optional)**: in **Settings → Staff & PINs** add yourself first (you become the manager), then your staff, each with a 4-digit PIN. From then on the app asks who is working, puts that name on orders, payments and receipts, and keeps these for managers: voiding orders and paid bills, recording walk-outs, removing dishes already sent to the kitchen, editing tables, and the Sales, Menu and Settings screens. A staff member can still do one of those if a manager types their PIN. Tap your name in the header to lock or switch user. An **activity log** in Settings records voids, walk-outs, removed dishes, rewards and staff changes, with who did it and who approved it.
 - **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound, ways to pay, low-stock level, reward rule). The bottom of every receipt shows the restaurant name, location and phone.
-- **Backups**: export everything to JSON and import it on another device. Settings shows when you last made one.
+- **Data folder**: in **Settings → Data**, choose a folder on the computer and the app keeps a copy of everything there as CSV files, updated a moment after every change. The files survive clearing the browser's data, open in Excel, and can be copied to a USB stick. Needs Chrome or Edge on a computer (see [Where the data lives](#where-the-data-lives)).
+- **Backups in CSV**: **Export backup (CSV)** downloads one ZIP with a CSV file per kind of record (menu, orders, order lines, dishes, payments, customers, staff, settings…). **Import backup** restores from that ZIP, or from the CSV files selected together, on this or another device. Settings shows when you last made one.
 - **Works with no internet**: once the app has been opened online, it is saved on the device and opens without a connection. It can be installed to the home screen like an app.
 
 ## Screenshots
@@ -100,6 +101,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   ├── state/
 │   │   ├── schema.js        Seed data, migrations between data versions, backup check
 │   │   ├── storage.js       localStorage read/write
+│   │   ├── folder.js        Data folder: keeps CSV files on the computer up to date
 │   │   └── store.js         Single store: persisted `data` + screen `ui` state, save()
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
 │   │   ├── orders.js        Totals, lines, create/move/complete/void orders
@@ -112,13 +114,14 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   │   ├── customers.js     Regular customers, visits and stamp-card rewards
 │   │   ├── drawer.js        Cash drawer: float, expected and counted cash
 │   │   ├── log.js           Activity log of sensitive actions
+│   │   ├── backup.js        All data as CSV files (one per kind of record) and back
 │   │   ├── insights.js      Trends over 7 or 30 days; best sellers for the Popular tab
 │   │   └── sales.js         Summary for a day or period, payment split, hourly chart range, CSV rows
 │   ├── views/               One render function per screen, returns HTML
 │   ├── components/          Dialogs: item note, move table, edit table, take payment, customer, PIN keypad
 │   ├── actions/             Event handlers per area, merged in actions/index.js
 │   ├── ui/                  render(), event delegation, modal, toast, receipt, day report, clock, alarm banner and sound, access checks, formatting
-│   ├── utils/               Small helpers: money, dates, text escaping, ids, files
+│   ├── utils/               Small helpers: money, dates, text escaping, ids, files and CSV, ZIP
 │   └── styles/              CSS split by area, imported via styles/index.css
 ├── tools/                   Build step that writes the offline service worker
 └── tests/                   Vitest unit tests for domain, schema and utils
@@ -137,7 +140,30 @@ To add a feature: put the rule in `domain/` with a test, add a handler in `actio
 
 All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, version 3 turned paid orders into completed ones when the payment step was removed, version 4 moved kitchen tickets onto each order as per-dish records (`order.dishes`), version 5 replaced the "number of tables" setting with a managed table list (`data.tables`), version 6 added payment tracking (orders completed before it are treated as paid), and version 7 added staff, customers, the cash drawer, the activity log and payment methods (bills paid before it show their method as "Not recorded"). Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
 
-Everything stays **on one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly. Two tabs on the same device stay in sync.
+### Where the data lives
+
+There is no database server. The app works from a copy of the data in the browser (localStorage), which is what makes it fast and usable with no internet. Clearing the browser's data erases that copy, so keep a second one outside the browser:
+
+- **Data folder** (Chrome or Edge on a computer): **Settings → Data → Choose data folder…**. From then on every change is written to CSV files in that folder within about a second. After the browser restarts it may show "Saving to your data folder is paused" with a **Resume saving** button: the browser wants one click before it lets a web page write to your disk again. If the browser's data is ever lost, choose the same folder again and pick **Keep the folder's data**. **Load from folder** does the same on demand.
+- **Backup ZIP** (any browser, including tablets): **Export backup (CSV)**, and keep the file somewhere safe.
+
+Both use the same files:
+
+| File                                            | One row per                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `about.csv`                                     | Fact about the files: data version, next order number, when saved        |
+| `settings.csv`                                  | Setting                                                                  |
+| `categories.csv`, `items.csv`, `tables.csv`     | Menu category, menu item (with price and stock left), table              |
+| `orders.csv`                                    | Bill: table, status, times, total, staff, customer                       |
+| `order_lines.csv`, `dishes.csv`, `payments.csv` | Line on a bill, dish sent to the kitchen, payment (linked by `order_id`) |
+| `customers.csv`, `staff.csv`                    | Customer, staff member (PINs are stored scrambled)                       |
+| `drawer.csv`, `log.csv`                         | Day's cash drawer figures, activity log entry                            |
+
+Amounts are plain decimals (`12.50`) and times are ISO dates in UTC (`2026-11-10T15:25:08.472Z`). The last column, `extra`, holds anything that doesn't fit the other columns; leave it as it is. You can edit the files in a spreadsheet and import them again (for example to load a menu: only `items.csv` and `categories.csv` are required), but keep the header row and save as CSV.
+
+The folder is a copy, not a shared database: the app reads it only when you ask (**Load from folder**, or when choosing a folder that already has data), so two computers pointing at the same folder would overwrite each other.
+
+Everything stays **on one device**. Two tabs on the same device stay in sync.
 
 ## Limits
 
