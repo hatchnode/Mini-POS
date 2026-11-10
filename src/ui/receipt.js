@@ -34,16 +34,10 @@ export function receiptHtml(order, now = Date.now()) {
     t.tip ? row('Tip', money(t.tip)) : '',
   ].join('');
 
-  // How it was paid; cash received and change when staff typed the cash in.
+  // One "Paid" row per payment; the method is named only when it isn't cash.
   const payments = paid
     ? settledPayments(order)
-        .map(
-          (p) =>
-            row(`Paid${p.method && p.method !== CASH ? ` · ${esc(p.method)}` : ''}`, money(p.amount)) +
-            (p.tendered != null && p.tendered > p.amount
-              ? row('Received', money(p.tendered)) + row('Change', money(p.tendered - p.amount))
-              : ''),
-        )
+        .map((p) => row(`Paid${p.method && p.method !== CASH ? ` · ${esc(p.method)}` : ''}`, money(p.amount)))
         .join('')
     : '';
   const people = [

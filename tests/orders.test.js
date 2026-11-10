@@ -139,7 +139,7 @@ describe('completing dishes', () => {
     const [b, f] = sendToKitchen(order, 5000);
     markDishReady(order, b.id, 6000);
     markDishReady(order, f.id, 7000);
-    expect(markPaid(order, 9000)).toMatchObject({ ok: true, completed: true });
+    expect(markPaid(order, 9000)).toEqual({ ok: true, completed: true });
     expect(order.status).toBe('completed');
     expect(order.completedAt).toBe(9000);
     expect(order.totals.total).toBe(1700);

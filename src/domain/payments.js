@@ -5,29 +5,26 @@
  * without paying, staff record a walk-out so the loss shows up in Sales instead of the order
  * silently disappearing.
  *
- * Each payment is kept on the order: `order.payments = [{ at, amount, method, tendered?, staff? }]`.
- * `tendered` is the cash handed over, when staff typed it in to work out the change.
+ * Each payment is kept on the order: `order.payments = [{ at, amount, method, staff? }]`.
  */
 import { completeIfDone, dishesOf, isServed } from './kitchen.js';
 import { balanceDue, billTotal, calcTotals } from './orders.js';
 
 /**
- * Mark the whole current bill as paid. `method` is how it was paid, `tendered` the cash received
- * (optional), `staff` who took it. Returns { ok, completed, change } or { ok: false, error }.
+ * Mark the whole current bill as paid. `method` is how it was paid and `staff` who took it.
+ * Returns { ok, completed } or { ok: false, error }.
  */
-export function markPaid(order, now = Date.now(), { method = null, tendered = null, staff = null } = {}) {
+export function markPaid(order, now = Date.now(), { method = null, staff = null } = {}) {
   if (order.status !== 'open') return { ok: false, error: 'This order is already closed' };
   if (!order.lines.length) return { ok: false, error: 'There is nothing to pay for yet' };
   const due = balanceDue(order);
   if (due === 0 && order.paidAt) return { ok: false, error: 'This bill is already paid' };
-  if (tendered != null && tendered < due) return { ok: false, error: 'That is less than the amount due' };
   const payment = { at: now, amount: due, method };
-  if (tendered != null) payment.tendered = tendered;
   if (staff) payment.staff = staff;
   order.payments = [...(order.payments || []), payment];
   order.paidAt = now;
   order.paidAmount = calcTotals(order).total;
-  return { ok: true, completed: completeIfDone(order, now), change: tendered != null ? tendered - due : 0 };
+  return { ok: true, completed: completeIfDone(order, now) };
 }
 
 /** Payments taken on an order. Bills paid before methods were recorded count as one payment. */
@@ -47,22 +44,6 @@ export function settledPayments(order) {
   const diff = billTotal(order) - list.reduce((sum, p) => sum + p.amount, 0);
   if (diff) list[list.length - 1].amount += diff;
   return list;
-}
-
-/**
- * Handy "cash received" amounts above the amount due, in cents: the next round figures a customer
- * is likely to hand over (e.g. for 17.00 → 18, 20, 50, 100). Works for any size of currency.
- */
-export function tenderOptions(due, count = 4) {
-  const units = due / 100;
-  const out = new Set();
-  for (let step = 1; step <= 1e7; step *= 10) {
-    for (const m of [1, 2, 5]) {
-      const amount = Math.ceil(units / (step * m)) * step * m;
-      if (amount > units) out.add(Math.round(amount * 100));
-    }
-  }
-  return [...out].sort((a, b) => a - b).slice(0, count);
 }
 
 /** Record that the customer left without paying. Frees the table; the loss shows in Sales. */

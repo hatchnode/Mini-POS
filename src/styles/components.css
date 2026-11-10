@@ -234,17 +234,6 @@
   padding: 14px 16px;
   font-size: 16px;
 }
-.pay-change {
-  font-weight: 700;
-  color: var(--ok);
-}
-.pay-change.bad {
-  color: var(--bad);
-}
-.row.total.pay-change {
-  margin-top: 0;
-}
-
 /* small shared bits */
 .good {
   color: var(--ok);
