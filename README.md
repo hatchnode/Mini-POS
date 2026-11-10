@@ -29,19 +29,24 @@ A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framewo
 
 Taken with sample data ("Corner Bistro"). The image files are in [`docs/screenshots/`](docs/screenshots).
 
-| Screen                                                         | What it shows                                                                                                        |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| [Orders](docs/screenshots/orders.png)                          | Tables, menu tiles with stock ("2 left", "Sold out"), the Popular tab, and a ticket with a customer and a reward due |
-| [Mark paid](docs/screenshots/mark-paid.png)                    | The payment confirmation                                                                                             |
-| [Kitchen](docs/screenshots/kitchen.png)                        | Dishes cooking, grouped by table                                                                                     |
-| [Sales · Day](docs/screenshots/sales-day.png)                  | The day's figures, bills awaiting payment and the cash drawer                                                        |
-| [Day report](docs/screenshots/day-report.png)                  | The printable end-of-day report                                                                                      |
-| [Sales · Trends](docs/screenshots/sales-trends.png)            | The last 7 days against the week before, best sellers, busiest hours                                                 |
-| [Sales · Customers](docs/screenshots/customers.png)            | Regular customers with visits, spend and reward progress                                                             |
-| [Menu](docs/screenshots/menu-stock.png)                        | The menu editor with the **Left** (stock) column                                                                     |
-| [Settings · Staff & PINs](docs/screenshots/settings-staff.png) | The staff list and the activity log                                                                                  |
-| [Lock screen](docs/screenshots/lock-screen.png)                | "Who is working?" when staff sign-in is on                                                                           |
-| [Manager PIN](docs/screenshots/manager-pin.png)                | A manager approving a staff member's void                                                                            |
+| Screen                                                          | What it shows                                                                                                        |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| [Orders](docs/screenshots/orders.png)                           | Tables, menu tiles with stock ("2 left", "Sold out"), the Popular tab, and a ticket with a customer and a reward due |
+| [Mark paid](docs/screenshots/mark-paid.png)                     | The payment confirmation                                                                                             |
+| [Kitchen](docs/screenshots/kitchen.png)                         | Dishes cooking, grouped by table                                                                                     |
+| [Sales · Day](docs/screenshots/sales-day.png)                   | The day's figures, bills awaiting payment and the cash drawer                                                        |
+| [Day report](docs/screenshots/day-report.png)                   | The printable end-of-day report                                                                                      |
+| [Sales · Trends](docs/screenshots/sales-trends.png)             | The last 7 days against the week before, best sellers, busiest hours                                                 |
+| [Sales · Customers](docs/screenshots/customers.png)             | Regular customers with visits, spend and reward progress                                                             |
+| [Menu](docs/screenshots/menu-stock.png)                         | The menu editor with the **Left** (stock) column                                                                     |
+| [Settings · Staff & PINs](docs/screenshots/settings-staff.png)  | The staff list and the activity log                                                                                  |
+| [Lock screen](docs/screenshots/lock-screen.png)                 | "Who is working?" when staff sign-in is on                                                                           |
+| [Manager PIN](docs/screenshots/manager-pin.png)                 | A manager approving a staff member's void                                                                            |
+| [Data folder and backup](docs/screenshots/data-folder.png)      | Settings → Data: saving to a folder on the computer, CSV backup                                                      |
+| [Server: first run](docs/screenshots/server-setup.png)          | Choosing the owner password when the server is first started                                                         |
+| [Server: connect a device](docs/screenshots/server-connect.png) | A tablet being asked for the owner password                                                                          |
+| [Server: no connection](docs/screenshots/server-offline.png)    | The banner while the server can't be reached; orders are still taken                                                 |
+| [Server panel](docs/screenshots/server-panel.png)               | Settings: staff PINs checked by the server, activity log, connection status                                          |
 
 ![Orders screen](docs/screenshots/orders.png)
 
