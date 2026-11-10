@@ -119,6 +119,16 @@ Each device will show a warning the first time, because the certificate is your 
 
 ## Deploying (one device, no server)
 
+### GitHub Pages (automatic)
+
+Every push to `main` is checked (lint, formatting, tests, build) and then published to GitHub Pages by `.github/workflows/deploy.yml`. Pull requests get the same checks without publishing.
+
+One-time setup: in the repository on GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**. The site then appears at `https://<owner>.github.io/<repository>/` a minute or two after each push; the **Actions** tab shows progress.
+
+The published site is the stand-alone app: each device keeps its own data in its browser. GitHub Pages only hosts files, so it cannot run the [server](#running-the-server); for several devices sharing data, run the server on a computer in the restaurant instead.
+
+### Any other static host
+
 `npm run build` produces a static `dist/` folder with relative paths, so it can be hosted anywhere static: GitHub Pages, Netlify, Cloudflare Pages, or any web server. On a tablet, open the URL and use **Add to Home Screen** to run it full-screen.
 
 The built files must be served over HTTP; opening `dist/index.html` straight from disk won't load the JavaScript modules. Use `npm run preview` to try the build locally.
