@@ -1,21 +1,27 @@
 # Mini-POS
 
-A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, works offline, and the production build is about 11 KB of gzipped JavaScript.
+A lightweight point-of-sale for a small restaurant. Plain JavaScript (no framework), built with [Vite](https://vite.dev). It runs entirely in the browser, opens and works with no internet, and the production build is under 30 KB of gzipped JavaScript.
 
 ## Features
 
 - **Tables & takeaway**: tap a table to start or reopen its order; open tables show their running total. **New takeaway** starts an order with no table (food to go); it appears under "Takeaway & other" once you add the first item. Move an order to another table or turn it into a takeaway.
 - **Manage tables**: on the Orders screen tap **Edit tables**, then tap **+** to add a table, or tap a table to rename it (e.g. "Patio", "Bar 2") or remove it. Tables with an open order can't be removed. Finished orders keep their table name.
-- **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick presets ("No onions", "Extra spicy", …).
+- **Fast ordering**: menu tiles grouped by colour-coded category, search, quantity +/−, per-item notes with quick presets ("No onions", "Extra spicy", …). A **★ Popular** tab lists your best sellers of the last 30 days, best first, so the usual orders are one tap away.
+- **Stock and sold out**: in **Menu**, type how many portions of an item you have in the **Left** column (leave it blank for items you never run out of). The count goes down as the item is ordered, the tile shows "3 left" when it runs low, and at zero it reads **Sold out** and can't be ordered. A portion comes back only if it is removed before being sent to the kitchen. Menu and Sales → Trends list what is running low.
 - **Per-dish kitchen orders**: "Send to kitchen" turns each line into its own dish order ("2× Burger" sent together is one dish), stamped with the time it was sent. The kitchen screen groups dishes by table, and each dish has its own timer (amber after 8 minutes, red after 15) and its own **Ready** button, which records that dish's completion time. Items added later are sent as new dishes with their own times.
-- **Paying**: tap **Mark paid** when the customer pays, before or after eating. A bill completes, and its table frees, only when every dish is served **and** it is paid. Items added after paying show the balance still due. **Recall** puts a ready dish back in the kitchen and reopens its table if needed. Removing a dish that is still cooking takes it off the kitchen screen. Prices are final, with no tax, discount or tip.
+- **Paying**: tap **Mark paid** when the customer pays, before or after eating, then confirm with **Paid**. Payment is cash only by default; if you take other kinds of payment, list them in Settings and each gets its own button. A bill completes, and its table frees, only when every dish is served **and** it is paid. Items added after paying show the balance still due. **Recall** puts a ready dish back in the kitchen and reopens its table if needed. Removing a dish that is still cooking takes it off the kitchen screen. Prices are final, with no tax, discount or tip.
 - **Walk-out protection**: a table whose dishes are all served but unpaid turns **red** ("unpaid $17.00") and stays occupied, and its ticket warns to take payment before the customer leaves. Sales shows an **Awaiting payment** list. If a customer leaves without paying, **Walked out** records the loss and frees the table, so it shows in Sales instead of disappearing.
 - **Unpaid alarm**: if a served table is still unpaid after a set time (5 minutes by default), its tile flashes, a red banner appears at the top of every screen (Orders, Kitchen, Sales…) with **Open** and **Customer still here** (snooze 10 minutes), and an alert sound plays, repeating every 3 minutes until it is paid. Set the minutes (0 = off) and the sound in **Settings**. The sound starts working after the first tap on the page, as browsers require.
-- **Receipts**: **Print bill** (open table) or **Receipt** (Sales) shows the receipt on screen; **Print** sends it to the printer. Laid out for 80 mm thermal printers, and works with any printer or "Save as PDF".
+- **Receipts**: **Print bill** (open table) or **Receipt** (Sales) shows the receipt on screen; **Print** sends it to the printer. Receipts show the customer and who served, when those are recorded. Laid out for 80 mm thermal printers, and works with any printer or "Save as PDF".
 - **Order times**: every dish logs when it was ordered (sent) and when the kitchen completed it. Each order line on the ticket shows how many are not sent, cooking or ready.
-- **Sales**: money counts only **paid** bills. For any day you see paid sales, bills paid, average bill, awaiting payment, walk-outs, dishes completed, average dish time, sales by hour, top items, the day's bills (paid / walked out / void, with reprint and void), and a **dish log** (ordered, completed and time taken for every dish, with its bill status). Export the dish log to CSV.
-- **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound). The bottom of every receipt shows the restaurant name, location and phone.
-- **Backups**: export everything to JSON and import it on another device.
+- **Sales · Day**: money counts only **paid** bills. For any day you see paid sales, bills paid, average bill, awaiting payment, walk-outs, dishes completed, average dish time, sales by hour, top items, **how it was paid** (and who took the payments), the day's bills (paid / walked out / void, with reprint and void), and a **dish log** (ordered, completed and time taken for every dish, with its bill status). Export the dish log to CSV.
+- **Cash drawer and day report**: on the Day tab, enter the opening float and, at closing, the cash you counted. The app shows what should be in the drawer (float + cash sales) and whether you are over or short. **Day report** prints the day's totals, payment split, drawer and items sold on the receipt printer.
+- **Sales · Trends**: the last 7 or 30 days compared with the period before: sales by day, best day, busiest hours, best sellers, payment split, menu items that did not sell at all, and items running low.
+- **Customers and rewards**: on a ticket tap **+ Add customer** to look up a regular by name or phone, or add a new one. Nothing is ever sent to them. Each paid bill counts as a visit; after a set number of visits (10 by default) the ticket shows **Reward due**, and tapping it adds the reward (e.g. "Free drink") as a free line that goes to the kitchen and prints on the receipt. **Sales → Customers** lists everyone with visits, money spent, last visit and reward progress.
+- **Staff sign-in (optional)**: in **Settings → Staff & PINs** add yourself first (you become the manager), then your staff, each with a 4-digit PIN. From then on the app asks who is working, puts that name on orders, payments and receipts, and keeps these for managers: voiding orders and paid bills, recording walk-outs, removing dishes already sent to the kitchen, editing tables, and the Sales, Menu and Settings screens. A staff member can still do one of those if a manager types their PIN. Tap your name in the header to lock or switch user. An **activity log** in Settings records voids, walk-outs, removed dishes, rewards and staff changes, with who did it and who approved it.
+- **Menu editor** and **settings** (name, location, phone, currency symbol, receipt footer, unpaid alarm minutes and sound, ways to pay, low-stock level, reward rule). The bottom of every receipt shows the restaurant name, location and phone.
+- **Backups**: export everything to JSON and import it on another device. Settings shows when you last made one.
+- **Works with no internet**: once the app has been opened online, it is saved on the device and opens without a connection. It can be installed to the home screen like an app.
 
 ## Getting started
 
@@ -44,13 +50,18 @@ npm run dev        # http://localhost:5173 with hot reload
 2. **Menu**: delete the sample items and add your own.
 3. **Orders**: tap a table → tap items → **Send to kitchen**.
 4. **Kitchen**: tap **Ready** on each dish as it's done.
-5. **Pay**: tap **Mark paid** on the ticket (or in Sales → Awaiting payment). The table frees once it is served and paid.
+5. **Pay**: tap **Mark paid** on the ticket (or in Sales → Awaiting payment), then **Paid**. The table frees once it is served and paid.
+6. **Close the day**: in **Sales**, count the cash into the **Cash drawer** box and print the **Day report**.
 
 ## Deploying
 
 `npm run build` produces a static `dist/` folder with relative paths, so it can be hosted anywhere static: GitHub Pages, Netlify, Cloudflare Pages, or any web server. On a tablet, open the URL and use **Add to Home Screen** to run it full-screen.
 
 The built files must be served over HTTP; opening `dist/index.html` straight from disk won't load the JavaScript modules. Use `npm run preview` to try the build locally.
+
+### Opening with no internet
+
+The build includes a service worker (`dist/sw.js`, written by `tools/serviceWorkerPlugin.js`) that saves a copy of the app on the device the first time it is opened online. After that the app opens with no connection. Browsers only allow this on **HTTPS** sites (and on `localhost`), which GitHub Pages, Netlify and Cloudflare Pages all provide. **Settings → Data** shows whether the copy has been saved. When you deploy a new build, devices pick it up the next time they open the app online; reload once to switch to it.
 
 ### Receipt printer
 
@@ -60,7 +71,7 @@ Set the thermal printer as the system default. In the browser's print dialog set
 
 ```
 ├── index.html               App shell (header, containers); Vite entry
-├── public/                  Static files copied as-is (favicon)
+├── public/                  Static files copied as-is (favicon, app icons, web manifest)
 ├── src/
 │   ├── main.js              Bootstraps styles, events, clock and first render
 │   ├── config.js            Constants: storage key, presets, ticket timings, defaults
@@ -71,22 +82,29 @@ Set the thermal printer as the system default. In the browser's print dialog set
 │   ├── domain/              Business rules: pure functions, no DOM, unit tested
 │   │   ├── orders.js        Totals, lines, create/move/complete/void orders
 │   │   ├── alarms.js        Unpaid alarm: which served tables have waited too long, snooze
-│   │   ├── payments.js      Mark paid, walk-outs, awaiting payment, payment status
+│   │   ├── payments.js      Mark paid (with method), walk-outs, awaiting payment, payment status
 │   │   ├── tables.js        Add, rename and remove tables; table labels
 │   │   ├── kitchen.js       Per-dish kitchen orders: send, ready, recall, cancel, queue
-│   │   └── sales.js         Daily summary, hourly chart range, CSV rows
+│   │   ├── stock.js         Portions left per item, sold out, low stock
+│   │   ├── staff.js         Staff list, PINs and roles
+│   │   ├── customers.js     Regular customers, visits and stamp-card rewards
+│   │   ├── drawer.js        Cash drawer: float, expected and counted cash
+│   │   ├── log.js           Activity log of sensitive actions
+│   │   ├── insights.js      Trends over 7 or 30 days; best sellers for the Popular tab
+│   │   └── sales.js         Summary for a day or period, payment split, hourly chart range, CSV rows
 │   ├── views/               One render function per screen, returns HTML
-│   ├── components/          Dialogs: item note, move table, edit table
+│   ├── components/          Dialogs: item note, move table, edit table, take payment, customer, PIN keypad
 │   ├── actions/             Event handlers per area, merged in actions/index.js
-│   ├── ui/                  render(), event delegation, modal, toast, receipt, clock, alarm banner and sound, formatting
+│   ├── ui/                  render(), event delegation, modal, toast, receipt, day report, clock, alarm banner and sound, access checks, formatting
 │   ├── utils/               Small helpers: money, dates, text escaping, ids, files
 │   └── styles/              CSS split by area, imported via styles/index.css
+├── tools/                   Build step that writes the offline service worker
 └── tests/                   Vitest unit tests for domain, schema and utils
 ```
 
 ### How it fits together
 
-1. **State** lives in `store` (`src/state/store.js`). `store.data` is saved to localStorage; `store.ui` (current screen, selected table, search) is not.
+1. **State** lives in `store` (`src/state/store.js`). `store.data` is saved to localStorage; `store.ui` (current screen, selected table, search, who is signed in) is not, so staff sign in again after a reload.
 2. **Views** read the store and return HTML strings. `render()` swaps the active view in and keeps scroll positions.
 3. **Events** are delegated. Markup declares intent with `data-act`, `data-change`, `data-input` or `data-submit`, and `ui/events.js` calls the handler of that name from `actions/`.
 4. **Actions** change state through the `domain/` functions, call `save()`, then `render()`.
@@ -95,13 +113,14 @@ To add a feature: put the rule in `domain/` with a test, add a handler in `actio
 
 ### Data
 
-All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, version 3 turned paid orders into completed ones when the payment step was removed, version 4 moved kitchen tickets onto each order as per-dish records (`order.dishes`), version 5 replaced the "number of tables" setting with a managed table list (`data.tables`), and version 6 added payment tracking (orders completed before it are treated as paid). Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
+All money is integer cents. Data is stored under the localStorage key `mini-pos-v1` with a `version` field; `state/schema.js#migrate` upgrades older data: version 2 dropped the tax setting, version 3 turned paid orders into completed ones when the payment step was removed, version 4 moved kitchen tickets onto each order as per-dish records (`order.dishes`), version 5 replaced the "number of tables" setting with a managed table list (`data.tables`), version 6 added payment tracking (orders completed before it are treated as paid), and version 7 added staff, customers, the cash drawer, the activity log and payment methods (bills paid before it show their method as "Not recorded"). Data saved by any earlier version loads unchanged, and old orders keep their original totals on reprinted receipts.
 
 Everything stays **on one device**. Clearing browser data erases it, so use **Settings → Export backup** regularly. Two tabs on the same device stay in sync.
 
 ## Limits
 
 - Single device: no sync between a front-of-house tablet and a separate kitchen screen.
-- No staff logins or PINs.
-- Payment is a simple paid / not paid mark: no payment method, split bills, or card-terminal integration.
-- No inventory, priced modifiers or split bills yet.
+- Staff PINs deter casual misuse on a shared tablet; they are not strong security. Everything is stored in the browser, a 4-digit PIN can be guessed, and **Forgot the manager PIN?** on the lock screen turns sign-in off (this is recorded in the activity log, so it can't be done unnoticed).
+- Payment is a record of how the customer paid: no card-terminal integration, split bills or part payments.
+- Stock is counted per menu item (portions), not per ingredient, and is updated by hand.
+- No priced modifiers, discounts, tax or tips.

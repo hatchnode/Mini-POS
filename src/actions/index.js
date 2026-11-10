@@ -1,13 +1,15 @@
 import * as common from './commonActions.js';
+import * as customers from './customerActions.js';
 import * as kitchen from './kitchenActions.js';
 import * as menu from './menuActions.js';
 import * as orders from './orderActions.js';
 import * as payments from './paymentActions.js';
 import * as sales from './salesActions.js';
 import * as settings from './settingsActions.js';
+import * as staff from './staffActions.js';
 import * as tables from './tableActions.js';
 
-const modules = [common, orders, payments, tables, kitchen, sales, menu, settings];
+const modules = [common, orders, payments, customers, tables, kitchen, sales, menu, settings, staff];
 
 function merge(kind) {
   const out = {};

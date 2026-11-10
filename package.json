@@ -1,6 +1,6 @@
 {
   "name": "mini-pos",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lightweight point-of-sale for small restaurants. Runs in the browser, works offline.",
   "private": true,
   "type": "module",

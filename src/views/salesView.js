@@ -1,31 +1,18 @@
+import { drawerEntry, drawerSummary } from '../domain/drawer.js';
 import { dishDuration, isServed } from '../domain/kitchen.js';
 import { balanceDue, billTotal, itemCount, orderDuration, orderLabel } from '../domain/orders.js';
-import { PAYMENT_STATUS_LABEL, awaitingPayment, paymentStatus } from '../domain/payments.js';
-import { chartHours, settledAt, summarizeSales } from '../domain/sales.js';
+import { PAYMENT_STATUS_LABEL, awaitingPayment, paymentStatus, paymentsOf } from '../domain/payments.js';
+import { settledAt, summarizeSales } from '../domain/sales.js';
 import { store } from '../state/store.js';
 import { money } from '../ui/format.js';
-import { dayRange, durationStr, hourLabel, timeAgo, timeOnDay, timeStr, todayStr } from '../utils/date.js';
+import { centsToInput } from '../utils/money.js';
+import { renderCustomersTab } from './customersView.js';
+import { hourlyChart, kpi, splitTable, topItemsTable } from './salesWidgets.js';
+import { renderTrendsTab } from './trendsView.js';
+import { dayRange, durationStr, timeAgo, timeOnDay, timeStr, todayStr } from '../utils/date.js';
 import { esc } from '../utils/text.js';
 
-const kpi = (label, value, cls = '') =>
-  `<div class="panel kpi ${cls}"><div class="l">${label}</div><div class="v">${value}</div></div>`;
-
 const pill = (status) => `<span class="pill ${status}">${PAYMENT_STATUS_LABEL[status] || status}</span>`;
-
-function hourlyChart(byHour) {
-  const hours = chartHours(byHour);
-  if (!hours.length) return '<div class="empty">No paid bills yet for this day.</div>';
-  const max = Math.max(...Object.values(byHour));
-  const bars = hours
-    .map((h) => {
-      const v = byHour[h] || 0;
-      const fill =
-        v && max ? `<div class="bar-f" style="height:${Math.max(2, (v / max) * 100)}%"></div>` : '';
-      return `<div class="bar" title="${hourLabel(h)}: ${money(v)}"><div class="bar-w">${fill}</div><span>${hourLabel(h)}</span></div>`;
-    })
-    .join('');
-  return `<div class="bars">${bars}</div>`;
-}
 
 /** Open bills still owing money, served ones first: the ones to chase before customers leave. */
 function awaitingSection(orders) {
@@ -72,6 +59,16 @@ function dishLog(dishes) {
   return `<table class="t"><thead><tr><th>Order</th><th>Dish</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Amount</th><th>Bill</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+/** "Cash", or e.g. "Cash + Voucher" when a bill was paid in two goes by different methods. */
+const paidBy = (o) =>
+  [
+    ...new Set(
+      paymentsOf(o)
+        .map((p) => p.method)
+        .filter(Boolean),
+    ),
+  ].join(' + ');
+
 /** Bills settled on this day (paid, walked out or void), for reprinting or voiding. */
 function billsTable(bills) {
   if (!bills.length) return '<div class="empty">No bills settled on this day.</div>';
@@ -85,7 +82,7 @@ function billsTable(bills) {
         <td>${timeStr(settledAt(o))}</td>
         <td class="n">${durationStr(orderDuration(o))}</td>
         <td class="n">${itemCount(o)}</td><td class="n">${money(billTotal(o))}</td>
-        <td>${pill(status)}</td>
+        <td>${pill(status)}${status === 'paid' ? ` <span class="muted small">${esc(paidBy(o))}</span>` : ''}</td>
         <td class="acts">
           <button class="small" data-act="printReceipt" data-id="${o.id}">Receipt</button>
           ${canVoid ? `<button class="small btn-danger" data-act="voidSale" data-id="${o.id}">Void</button>` : ''}
@@ -95,28 +92,40 @@ function billsTable(bills) {
   return `<table class="t"><thead><tr><th>#</th><th>Order</th><th>Opened</th><th>Settled</th><th class="n">Took</th><th class="n">Items</th><th class="n">Total</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function topItemsTable(items) {
-  if (!items.length) return '<div class="empty">—</div>';
-  const rows = items
-    .map(
-      (i) =>
-        `<tr><td>${esc(i.name)}</td><td class="n">${i.qty}</td><td class="n">${money(i.revenue)}</td></tr>`,
-    )
-    .join('');
-  return `<table class="t"><thead><tr><th>Item</th><th class="n">Qty</th><th class="n">Sales</th></tr></thead><tbody>${rows}</tbody></table>`;
+/** Opening float + cash taken = what should be in the drawer; compare with the cash counted. */
+function drawerPanel(date, cashTotal) {
+  const d = drawerSummary(drawerEntry(store.data, date), cashTotal);
+  const box = (name, value, label) =>
+    `<input class="price" type="number" step="0.01" min="0" inputmode="decimal" value="${value == null ? '' : centsToInput(value)}" placeholder="0.00" data-change="${name}" aria-label="${label}">`;
+  let result = '<span class="muted">Count the cash to compare</span>';
+  if (d.difference != null) {
+    if (d.difference === 0) result = '<b class="good">Matches</b>';
+    else
+      result = `<b class="bad">${d.difference < 0 ? 'Short' : 'Over'} by ${money(Math.abs(d.difference))}</b>`;
+  }
+  return `<section class="panel"><div class="panel-h"><h2>Cash drawer</h2></div>
+    <div class="panel-b drawer">
+      <div class="row"><span>Opening float</span>${box('setDrawerFloat', d.float || null, 'Opening float')}</div>
+      <div class="row"><span>Cash sales</span><span>${money(d.cashSales)}</span></div>
+      <div class="row strong"><span>Should be in the drawer</span><span>${money(d.expected)}</span></div>
+      <div class="row"><span>Cash counted</span>${box('setDrawerCounted', d.counted, 'Cash counted')}</div>
+      <div class="row"><span>Difference</span><span>${result}</span></div>
+    </div></section>`;
 }
 
-export function renderSalesView() {
+function renderDayTab() {
   const { data, ui } = store;
   const s = summarizeSales(data.orders, dayRange(ui.salesDate));
   const isToday = ui.salesDate === todayStr();
   const owing = isToday ? awaitingPayment(data) : [];
   const owingTotal = owing.reduce((sum, o) => sum + balanceDue(o), 0);
 
-  return `<div class="page">
-    <div class="page-top"><h1>Sales</h1>
+  return `<div class="page-top">
       <div class="inrow">
         <input type="date" value="${ui.salesDate}" max="${todayStr()}" data-change="salesDate" aria-label="Day">
+      </div>
+      <div class="inrow">
+        <button data-act="showDayReport">Day report</button>
         <button data-act="exportSalesCsv" ${s.dishes.length ? '' : 'disabled'}>Export CSV</button>
       </div>
     </div>
@@ -135,9 +144,33 @@ export function renderSalesView() {
       <section class="panel"><div class="panel-h"><h2>Top items (paid)</h2></div>
         <div class="tablewrap">${topItemsTable(s.topItems)}</div></section>
     </div>
+    <div class="split">
+      <section class="panel">
+        ${s.byMethod.length > 1 || !s.byStaff.length ? `<div class="panel-h"><h2>How it was paid</h2></div><div class="tablewrap">${splitTable(s.byMethod, s.total, 'Method')}</div>` : ''}
+        ${s.byStaff.length ? `<div class="panel-h ${s.byMethod.length > 1 ? 'sub-h' : ''}"><h2>Payments taken by</h2></div><div class="tablewrap">${splitTable(s.byStaff, s.total, 'Staff')}</div>` : ''}
+      </section>
+      ${drawerPanel(ui.salesDate, s.cashTotal)}
+    </div>
     <section class="panel"><div class="panel-h"><h2>Bills</h2><span class="muted small">${s.bills.length}</span></div>
       <div class="tablewrap">${billsTable(s.bills)}</div></section>
     <section class="panel"><div class="panel-h"><h2>Dish log</h2><span class="muted small">${s.dishCount} completed</span></div>
-      <div class="tablewrap">${dishLog(s.dishes)}</div></section>
+      <div class="tablewrap">${dishLog(s.dishes)}</div></section>`;
+}
+
+const TABS = [
+  ['day', 'Day', renderDayTab],
+  ['trends', 'Trends', renderTrendsTab],
+  ['customers', 'Customers', renderCustomersTab],
+];
+
+export function renderSalesView() {
+  const active = TABS.find(([id]) => id === store.ui.salesTab) || TABS[0];
+  const tabs = TABS.map(
+    ([id, label]) =>
+      `<button class="chip ${id === active[0] ? 'on' : ''}" data-act="salesTab" data-tab="${id}">${label}</button>`,
+  ).join('');
+  return `<div class="page">
+    <div class="page-top"><h1>Sales</h1><div class="cats">${tabs}</div></div>
+    ${active[2]()}
   </div>`;
 }

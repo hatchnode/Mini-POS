@@ -1,5 +1,6 @@
 import { createSeedData, migrate } from './schema.js';
 import { isStorageAvailable, readStoredData, writeStoredData } from './storage.js';
+import { findStaff } from '../domain/staff.js';
 import { todayStr } from '../utils/date.js';
 
 function loadInitialData(storageOK) {
@@ -28,6 +29,11 @@ export const store = {
     showReadyDishes: false,
     /** Orders screen: tables are being added, renamed or removed. */
     editTables: false,
+    /** Who is signed in (when staff are set up). Asked again after the page reloads. */
+    staffId: null,
+    /** Sales screen: 'day', 'trends' or 'customers'; trends cover 7 or 30 days. */
+    salesTab: 'day',
+    trendDays: 7,
   },
 };
 
@@ -57,3 +63,7 @@ export function clearSelection() {
 
 export const currentOrder = () =>
   store.data.orders.find((o) => o.id === store.ui.currentOrderId && o.status === 'open') || null;
+
+/** The signed-in staff member, or null when nobody is signed in (or staff aren't set up). */
+export const currentStaff = () => findStaff(store.data, store.ui.staffId);
+export const staffName = () => currentStaff()?.name ?? null;
