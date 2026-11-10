@@ -1,7 +1,9 @@
 import { pinInput } from '../components/staffPinDialog.js';
 import { recentLog } from '../domain/log.js';
 import { ROLE_LABEL } from '../domain/staff.js';
+import { folder, folderSupported } from '../state/folder.js';
 import { store } from '../state/store.js';
+import { folderStatusHtml } from '../ui/folderStatus.js';
 import { dateTimeStr, timeAgo } from '../utils/date.js';
 import { esc } from '../utils/text.js';
 
@@ -61,6 +63,19 @@ function logPanel() {
   </section>`;
 }
 
+function folderButtons() {
+  if (!folderSupported()) return '';
+  if (folder.status === 'off') {
+    return '<div class="inrow wrap"><button class="btn-primary" data-act="chooseFolder">Choose data folder…</button></div>';
+  }
+  return `<div class="inrow wrap">
+    ${folder.status === 'on' ? '' : '<button class="btn-primary" data-act="resumeFolder">Resume saving</button>'}
+    <button data-act="loadFromFolder">Load from folder</button>
+    <button data-act="chooseFolder">Change folder…</button>
+    <button data-act="stopFolder">Stop saving to folder</button>
+  </div>`;
+}
+
 /** Whether this copy of the app has been saved on the device so it opens offline. */
 function offlineNote() {
   if (!('serviceWorker' in navigator)) return 'not supported in this browser';
@@ -117,11 +132,19 @@ export function renderSettingsView() {
       <div><button class="btn-primary" data-act="saveSettings">Save settings</button></div>
     </div></section>
     <section class="panel"><div class="panel-h"><h2>Data</h2></div><div class="panel-b form">
-      <p class="muted flush">Everything is stored in this browser on this device. Export a backup regularly, and before clearing browser data.</p>
-      <div class="inrow wrap">
-        <button data-act="exportBackup">Export backup</button>
-        <button data-act="importBackup">Import backup</button>
-        <input type="file" id="import-file" accept="application/json,.json" hidden data-change="importFile">
+      <p class="muted flush">The app works from a copy of the data kept in this browser. Choose a data folder to also keep everything as CSV files on this computer, updated as you work.</p>
+      <div class="fld">Data folder
+        <div class="settings-note" id="folder-status">${folderStatusHtml()}</div>
+        ${folderButtons()}
+      </div>
+      <hr>
+      <div class="fld">Backup
+        <div class="settings-note">A ZIP of CSV files (menu, orders, customers, staff, settings…) that open in Excel. To restore, pick the ZIP, or select all its CSV files together.</div>
+        <div class="inrow wrap">
+          <button data-act="exportBackup">Export backup (CSV)</button>
+          <button data-act="importBackup">Import backup</button>
+          <input type="file" id="import-file" accept=".zip,.csv,.json" multiple hidden data-change="importFile">
+        </div>
       </div>
       <hr>
       <div class="inrow wrap">

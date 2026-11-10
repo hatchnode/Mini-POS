@@ -138,6 +138,7 @@ function migratePayment(order) {
 /** Bring stored or imported data up to the current schema. */
 export function migrate(raw) {
   const data = { ...raw };
+  const version = Number(raw.version) || 1;
   const settings = { ...DEFAULT_SETTINGS, ...(raw.settings || {}) };
   delete settings.taxRate; // v2: tax removed
   const tableCount = Number.isInteger(settings.tables) ? settings.tables : DEFAULT_TABLE_COUNT;
@@ -148,7 +149,12 @@ export function migrate(raw) {
   data.items = Array.isArray(raw.items) ? raw.items : [];
   const tickets = Array.isArray(raw.tickets) ? raw.tickets : [];
   data.orders = Array.isArray(raw.orders)
-    ? raw.orders.map((o) => migratePayment(migrateTable(migrateDishes(migrateOrder(o), tickets))))
+    ? raw.orders.map((o) => {
+        // The v3 and v6 steps rewrite payment fields, so they must only run on data older than that:
+        // on current data they would un-pay a bill that was paid before all its dishes were served.
+        const order = migrateTable(migrateDishes(version < 3 ? migrateOrder(o) : o, tickets));
+        return version < 6 ? migratePayment(order) : order;
+      })
     : [];
   delete data.tickets; // v4: replaced by order.dishes
   data.seq = Number(raw.seq) || 1;

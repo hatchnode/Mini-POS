@@ -179,6 +179,35 @@ describe('schema', () => {
     expect(again.settings.otherPayments).toEqual(['Voucher']);
   });
 
+  it('leaves current data alone: a bill paid before it is served stays paid after a reload', () => {
+    const order = {
+      id: 'a',
+      no: 1,
+      table: 't1',
+      tableName: '1',
+      status: 'open',
+      createdAt: 100,
+      paidAt: 500,
+      paidAmount: 900,
+      payments: [{ at: 500, amount: 900, method: 'Cash' }],
+      lines: [{ id: 'l', itemId: 'i', name: 'Tea', price: 450, qty: 2, sent: 2, note: '' }],
+      dishes: [
+        {
+          id: 'd',
+          lineId: 'l',
+          name: 'Tea',
+          qty: 2,
+          note: '',
+          price: 450,
+          orderedAt: 100,
+          completedAt: null,
+        },
+      ],
+    };
+    const d = migrate({ version: 7, settings: {}, items: [], categories: [], orders: [order] });
+    expect(d.orders[0]).toEqual(order);
+  });
+
   it('recognises backups', () => {
     expect(isBackup(createSeedData())).toBe(true);
     expect(isBackup({ foo: 1 })).toBe(false);

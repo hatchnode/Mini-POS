@@ -1,13 +1,46 @@
 import { CASH } from '../config.js';
+import { backupFiles, dataFromFiles } from '../domain/backup.js';
+import {
+  folder,
+  forgetFolder,
+  pickFolder,
+  readFolderFiles,
+  resumeFolder,
+  saveToFolderNow,
+  useFolder,
+} from '../state/folder.js';
 import { createSeedData, isBackup } from '../state/schema.js';
 import { clearSelection, replaceData, save, store } from '../state/store.js';
 import { audit } from '../ui/access.js';
-import { confirmDialog } from '../ui/modal.js';
+import { closeButton, closeModal, confirmDialog, openModal } from '../ui/modal.js';
 import { render } from '../ui/render.js';
 import { toast } from '../ui/toast.js';
 import { $ } from '../utils/dom.js';
-import { todayStr } from '../utils/date.js';
-import { downloadText, readFileText } from '../utils/file.js';
+import { dateTimeStr, todayStr } from '../utils/date.js';
+import { downloadFile, readFileBytes, readFileText } from '../utils/file.js';
+import { esc, plural } from '../utils/text.js';
+import { unzipFiles, zipFiles } from '../utils/zip.js';
+
+const currentFiles = () => backupFiles(store.data);
+
+/** "214 orders and 18 menu items", to help tell two sets of data apart. */
+const describe = (data) =>
+  `${plural((data.orders || []).length, 'order')} and ${plural((data.items || []).length, 'menu item')}`;
+
+/** A folder picked in "Choose folder" that already holds data, while the user decides which to keep. */
+let pendingFolder = null;
+
+/** Remember the folder and write the current data to it straight away. */
+async function startUsing(dir) {
+  try {
+    await useFolder(dir);
+    await saveToFolderNow(currentFiles);
+  } catch (error) {
+    toast(`Could not use that folder: ${error.message}`, 3500);
+  }
+  save();
+  render();
+}
 
 export const click = {
   saveSettings() {
@@ -35,18 +68,97 @@ export const click = {
     render();
     toast('Settings saved');
   },
+  /** Download everything as one ZIP of CSV files. */
   exportBackup() {
     store.data.lastBackupAt = Date.now();
     save();
     render();
-    downloadText(
-      `mini-pos-backup-${todayStr()}.json`,
-      JSON.stringify(store.data, null, 2),
-      'application/json',
-    );
+    downloadFile(`mini-pos-backup-${todayStr()}.zip`, zipFiles(currentFiles()), 'application/zip');
   },
   importBackup() {
     $('#import-file').click();
+  },
+
+  /** Pick a folder on the computer to keep a copy of the data in, as CSV files. */
+  async chooseFolder() {
+    let dir;
+    try {
+      dir = await pickFolder();
+    } catch (error) {
+      return toast(`Could not open that folder: ${error.message}`, 3500);
+    }
+    if (!dir) return;
+    const found = dataFromFiles(await readFolderFiles(dir).catch(() => []));
+    if (!found.ok) {
+      await startUsing(dir);
+      return toast(`Saving to the folder “${dir.name}”`);
+    }
+    // The folder already holds Mini-POS data: don't overwrite it, or this device's data, without asking.
+    pendingFolder = { dir, data: found.data };
+    openModal(`
+      <div class="mh"><h3>This folder already has Mini-POS data</h3>${closeButton}</div>
+      <div class="mb">
+        <p>“${esc(dir.name)}” contains ${describe(found.data)}${found.savedAt ? `, saved ${dateTimeStr(found.savedAt)}` : ''}.</p>
+        <p>This device has ${describe(store.data)}.</p>
+        <p class="muted">Which one do you want to keep? The other is replaced.</p>
+      </div>
+      <div class="mf wrap">
+        <button data-act="closeModal">Cancel</button>
+        <button class="btn-primary" data-act="folderKeepFolder">Keep the folder’s data</button>
+        <button class="btn-dangerfill" data-act="folderKeepDevice">Keep this device’s data</button>
+      </div>`);
+  },
+  async folderKeepFolder() {
+    if (!pendingFolder) return;
+    const { dir, data } = pendingFolder;
+    pendingFolder = null;
+    closeModal();
+    replaceData(data);
+    await startUsing(dir);
+    toast(`Loaded the data from “${dir.name}”`);
+  },
+  async folderKeepDevice() {
+    if (!pendingFolder) return;
+    const { dir } = pendingFolder;
+    pendingFolder = null;
+    closeModal();
+    await startUsing(dir);
+    toast(`Saving to the folder “${dir.name}”`);
+  },
+  /** Replace what is in the browser with what is in the folder (e.g. after clearing browser data). */
+  loadFromFolder() {
+    confirmDialog({
+      message: `Replace all data on this device with the files in the folder “${folder.name}”?`,
+      confirmLabel: 'Load from folder',
+      danger: true,
+      onConfirm: async () => {
+        const found = dataFromFiles(await readFolderFiles().catch(() => []));
+        if (!found.ok) return toast(found.error, 3500);
+        replaceData(found.data);
+        save();
+        render();
+        toast('Loaded the data from the folder');
+      },
+    });
+  },
+  stopFolder() {
+    confirmDialog({
+      message: `Stop saving to the folder “${folder.name}”? The files already there are left as they are.`,
+      confirmLabel: 'Stop saving',
+      onConfirm: async () => {
+        await forgetFolder();
+        render();
+        toast('No longer saving to a folder');
+      },
+    });
+  },
+  /** Banner button: the browser needs a click before it lets the app write to the folder again. */
+  async resumeFolder() {
+    if (await resumeFolder()) {
+      await saveToFolderNow(currentFiles);
+      toast(`Saving to the folder “${folder.name}” again`);
+    } else toast('The browser did not allow access to the folder');
+    render();
   },
   clearOrders() {
     confirmDialog({
@@ -85,26 +197,35 @@ export const click = {
 };
 
 export const change = {
+  /** Restore a backup: the ZIP, or the CSV files picked together. (Old JSON backups still load.) */
   async importFile(el) {
-    const file = el.files?.[0];
-    if (!file) return;
+    const files = [...(el.files || [])];
     el.value = '';
-    let raw;
+    if (!files.length) return;
+    const named = (ext) => files.find((f) => f.name.toLowerCase().endsWith(ext));
+    let result;
     try {
-      raw = JSON.parse(await readFileText(file));
+      if (named('.zip')) result = dataFromFiles(await unzipFiles(await readFileBytes(named('.zip'))));
+      else if (named('.json')) {
+        const raw = JSON.parse(await readFileText(named('.json')));
+        result = isBackup(raw)
+          ? { ok: true, data: raw }
+          : { ok: false, error: 'That file is not a Mini-POS backup' };
+      } else {
+        result = dataFromFiles(
+          await Promise.all(files.map(async (f) => ({ name: f.name, text: await readFileText(f) }))),
+        );
+      }
     } catch {
-      raw = null;
+      result = { ok: false, error: 'That file could not be read as a Mini-POS backup' };
     }
-    if (!isBackup(raw)) {
-      toast('That file is not a Mini-POS backup');
-      return;
-    }
+    if (!result.ok) return toast(result.error, 3500);
     confirmDialog({
-      message: `Replace all current data with the backup "${file.name}"?`,
+      message: `Replace all current data with this backup (${describe(result.data)}${result.savedAt ? `, saved ${dateTimeStr(result.savedAt)}` : ''})?`,
       confirmLabel: 'Restore',
       danger: true,
       onConfirm: () => {
-        replaceData(raw);
+        replaceData(result.data);
         save();
         render();
         toast('Backup restored');

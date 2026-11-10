@@ -3,7 +3,10 @@ import './styles/index.css';
 import { handlers } from './actions/index.js';
 import { isPinDialogOpen, pinKey } from './components/pinDialog.js';
 import { STORAGE_KEY } from './config.js';
-import { onSaveError, replaceData, store } from './state/store.js';
+import { backupFiles } from './domain/backup.js';
+import { initFolder, onFolderChange, scheduleFolderSave } from './state/folder.js';
+import { onSave, onSaveError, replaceData, store } from './state/store.js';
+import { renderFolderStatus } from './ui/folderStatus.js';
 import { startClock } from './ui/clock.js';
 import { bindEvents } from './ui/events.js';
 import { closeModal, isModalOpen } from './ui/modal.js';
@@ -57,6 +60,11 @@ navigator.storage?.persist?.().catch(() => {});
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
+
+// Keep the data folder (if one was chosen in Settings) up to date with every change.
+onFolderChange(renderFolderStatus);
+onSave(() => scheduleFolderSave(() => backupFiles(store.data)));
+initFolder().then(() => scheduleFolderSave(() => backupFiles(store.data)));
 
 startClock();
 render();

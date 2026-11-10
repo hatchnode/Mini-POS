@@ -269,3 +269,11 @@
     grid-column: 1 / -1;
   }
 }
+
+/* data folder */
+.banner button {
+  margin-left: 8px;
+}
+.mf.wrap {
+  flex-wrap: wrap;
+}
