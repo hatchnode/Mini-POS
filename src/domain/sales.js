@@ -5,7 +5,11 @@
  */
 import { dishDuration, dishesOf } from './kitchen.js';
 import { billTotal, orderLabel } from './orders.js';
-import { PAYMENT_STATUS_LABEL, paymentStatus } from './payments.js';
+import { PAYMENT_STATUS_LABEL, paymentStatus, settledPayments } from './payments.js';
+import { CASH } from '../config.js';
+
+/** Label for payments taken before methods were recorded. */
+export const NO_METHOD = 'Not recorded';
 
 const within = (ts, [start, end]) => !!ts && ts >= start && ts < end;
 
@@ -48,17 +52,31 @@ export function summarizeSales(allOrders, range) {
   let total = 0;
   const byHour = {};
   const items = {};
+  const methods = {};
+  const staff = {};
+  const tally = (group, key, amount) => {
+    const row = (group[key] ||= { name: key, amount: 0, count: 0 });
+    row.amount += amount;
+    row.count += 1;
+  };
   for (const o of paid) {
     const amount = billTotal(o);
     total += amount;
     const h = new Date(o.paidAt).getHours();
     byHour[h] = (byHour[h] || 0) + amount;
+    for (const p of settledPayments(o)) {
+      tally(methods, p.method || NO_METHOD, p.amount);
+      if (p.staff) tally(staff, p.staff, p.amount);
+    }
     for (const l of o.lines) {
       const it = (items[l.name] ||= { name: l.name, qty: 0, revenue: 0 });
       it.qty += l.qty;
       it.revenue += l.qty * l.price;
     }
   }
+
+  const soldItems = Object.values(items).sort((a, b) => b.revenue - a.revenue);
+  const byAmount = (group) => Object.values(group).sort((a, b) => b.amount - a.amount);
 
   let durationSum = 0;
   let durationCount = 0;
@@ -85,9 +103,13 @@ export function summarizeSales(allOrders, range) {
     /** Average sent → ready time per dish in ms, or null when nothing was completed. */
     averageDishTime: durationCount ? Math.round(durationSum / durationCount) : null,
     byHour,
-    topItems: Object.values(items)
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10),
+    /** Paid sales split by how they were paid and by who took the payment, biggest first. */
+    byMethod: byAmount(methods),
+    byStaff: byAmount(staff),
+    cashTotal: methods[CASH]?.amount || 0,
+    /** Every item sold on paid bills, best first; `topItems` is the first ten. */
+    items: soldItems,
+    topItems: soldItems.slice(0, 10),
   };
 }
 

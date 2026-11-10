@@ -35,12 +35,16 @@ const SAMPLE_ITEMS = [
 export function createSeedData() {
   return {
     version: SCHEMA_VERSION,
-    settings: { ...DEFAULT_SETTINGS },
+    settings: { ...DEFAULT_SETTINGS, otherPayments: [...DEFAULT_SETTINGS.otherPayments] },
     categories: SAMPLE_CATEGORIES.map((c) => ({ ...c })),
     items: SAMPLE_ITEMS.map(([name, price, catId]) => ({ id: uid(), name, price, catId, active: true })),
     tables: numberedTables(DEFAULT_TABLE_COUNT),
     orders: [],
     seq: 1,
+    staff: [],
+    customers: [],
+    drawer: {},
+    log: [],
   };
 }
 
@@ -148,6 +152,14 @@ export function migrate(raw) {
     : [];
   delete data.tickets; // v4: replaced by order.dishes
   data.seq = Number(raw.seq) || 1;
+  // v7: staff sign-in, customers, cash drawer notes and the activity log. Older data has none.
+  settings.otherPayments = [
+    ...(Array.isArray(settings.otherPayments) ? settings.otherPayments : DEFAULT_SETTINGS.otherPayments),
+  ];
+  data.staff = Array.isArray(raw.staff) ? raw.staff : [];
+  data.customers = Array.isArray(raw.customers) ? raw.customers : [];
+  data.drawer = raw.drawer && typeof raw.drawer === 'object' ? raw.drawer : {};
+  data.log = Array.isArray(raw.log) ? raw.log : [];
   data.version = SCHEMA_VERSION;
   return data;
 }

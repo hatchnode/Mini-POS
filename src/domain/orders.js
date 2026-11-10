@@ -36,8 +36,8 @@ export const billTotal = (order) => (order.totals ?? calcTotals(order)).total;
 export const orderDuration = (order) =>
   order.createdAt && order.completedAt ? order.completedAt - order.createdAt : null;
 
-/** `table` is a table from `data.tables`, or null for a takeaway. */
-export function createOrder(data, table, now = Date.now()) {
+/** `table` is a table from `data.tables`, or null for a takeaway. `staff` is who opened it, if staff sign in. */
+export function createOrder(data, table, now = Date.now(), staff = null) {
   const order = {
     id: uid(),
     no: data.seq++,
@@ -48,6 +48,7 @@ export function createOrder(data, table, now = Date.now()) {
     lines: [],
     dishes: [],
   };
+  if (staff) order.staff = staff;
   data.orders.push(order);
   return order;
 }

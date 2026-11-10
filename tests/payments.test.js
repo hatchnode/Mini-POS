@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { addItem, balanceDue, createOrder, isPaid } from '../src/domain/orders.js';
 import { markDishReady, sendToKitchen } from '../src/domain/kitchen.js';
-import { awaitingPayment, markPaid, markWalkout, paymentStatus } from '../src/domain/payments.js';
+import {
+  awaitingPayment,
+  markPaid,
+  markWalkout,
+  paymentStatus,
+  paymentsOf,
+  settledPayments,
+  tenderOptions,
+} from '../src/domain/payments.js';
+import { summarizeSales } from '../src/domain/sales.js';
 
 const burger = { id: 'b', name: 'Burger', price: 1250 };
 const fries = { id: 'f', name: 'Fries', price: 450 };
@@ -70,5 +79,72 @@ describe('awaitingPayment', () => {
     const paid = servedOrder(data, 3);
     markPaid(paid);
     expect(awaitingPayment(data)).toEqual([served, cooking]);
+  });
+});
+
+describe('payment methods', () => {
+  it('records how each payment was made, who took it and the change', () => {
+    const order = servedOrder(emptyData());
+    const result = markPaid(order, 3000, { method: 'Cash', tendered: 2000, staff: 'Ana' });
+    expect(result).toMatchObject({ ok: true, change: 750 });
+    expect(order.payments).toEqual([{ at: 3000, amount: 1250, method: 'Cash', tendered: 2000, staff: 'Ana' }]);
+  });
+
+  it('refuses cash that does not cover the bill', () => {
+    const order = servedOrder(emptyData());
+    expect(markPaid(order, 3000, { method: 'Cash', tendered: 1000 }).ok).toBe(false);
+    expect(order.paidAt).toBeUndefined();
+  });
+
+  it('keeps a second payment for items added later', () => {
+    const order = createOrder(emptyData(), null);
+    addItem(order, burger);
+    markPaid(order, 1000, { method: 'Cash' });
+    addItem(order, fries);
+    markPaid(order, 2000, { method: 'Card' });
+    expect(order.payments.map((p) => [p.method, p.amount])).toEqual([
+      ['Cash', 1250],
+      ['Card', 450],
+    ]);
+  });
+
+  it('treats bills paid before methods existed as one unrecorded payment', () => {
+    const old = { paidAt: 500, paidAmount: 900, lines: [], totals: { total: 900 } };
+    expect(paymentsOf(old)).toEqual([{ at: 500, amount: 900, method: null }]);
+  });
+
+  it('takes a later removal off the last payment', () => {
+    const order = createOrder(emptyData(), null);
+    addItem(order, burger);
+    addItem(order, fries);
+    markPaid(order, 1000, { method: 'Card' });
+    order.lines.pop();
+    expect(settledPayments(order).map((p) => p.amount)).toEqual([1250]);
+  });
+
+  it('suggests round cash amounts above the bill', () => {
+    expect(tenderOptions(1700)).toEqual([1800, 2000, 5000, 10000]);
+    expect(tenderOptions(450000)).toEqual([460000, 500000, 600000, 1000000]);
+    expect(tenderOptions(2000, 2)).toEqual([5000, 10000]);
+  });
+
+  it('splits paid sales by method and by who took the payment', () => {
+    const data = emptyData();
+    const a = servedOrder(data, 1);
+    const b = servedOrder(data, 2);
+    const c = servedOrder(data, 3);
+    markPaid(a, 3000, { method: 'Cash', staff: 'Ana' });
+    markPaid(b, 3000, { method: 'Card', staff: 'Ana' });
+    markPaid(c, 3000, { method: 'Cash', staff: 'Ben' });
+    const s = summarizeSales(data.orders, [0, 10000]);
+    expect(s.byMethod).toEqual([
+      { name: 'Cash', amount: 2500, count: 2 },
+      { name: 'Card', amount: 1250, count: 1 },
+    ]);
+    expect(s.cashTotal).toBe(2500);
+    expect(s.byStaff.map((r) => [r.name, r.amount])).toEqual([
+      ['Ana', 2500],
+      ['Ben', 1250],
+    ]);
   });
 });

@@ -23,7 +23,7 @@ describe('schema', () => {
 
   it('migrates v1 data by dropping the tax setting and filling defaults', () => {
     const d = migrate({ version: 1, settings: { name: 'Cafe', taxRate: 8 }, items: [], categories: [] });
-    expect(d.version).toBe(6);
+    expect(d.version).toBe(7);
     expect(d.settings.name).toBe('Cafe');
     expect(d.settings).not.toHaveProperty('taxRate');
     expect(d.orders).toEqual([]);
@@ -157,6 +157,22 @@ describe('schema', () => {
       ],
     });
     expect(d.orders[0]).toMatchObject({ paidAt: 500, paidAmount: 900 });
+  });
+
+  it('v7 adds staff, customers, drawer, log and payment settings without touching older data', () => {
+    const d = migrate({
+      version: 6,
+      settings: { name: 'Cafe' },
+      items: [{ id: 'i', name: 'Tea', price: 275, active: true }],
+      categories: [],
+      orders: [],
+    });
+    expect([d.staff, d.customers, d.log, d.drawer]).toEqual([[], [], [], {}]);
+    expect(d.settings).toMatchObject({ otherPayments: ['Card'], lowStock: 5, loyaltyVisits: 10 });
+    expect(d.items[0]).not.toHaveProperty('stock');
+    const again = migrate({ ...d, staff: [{ id: 's', name: 'Ana' }], settings: { ...d.settings, otherPayments: [] } });
+    expect(again.staff).toHaveLength(1);
+    expect(again.settings.otherPayments).toEqual([]);
   });
 
   it('recognises backups', () => {

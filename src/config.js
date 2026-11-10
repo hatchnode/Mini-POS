@@ -1,7 +1,7 @@
 /** App-wide constants. Change these to tune behaviour without touching logic. */
 
 export const STORAGE_KEY = 'mini-pos-v1';
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const MAX_TABLES = 100;
 /** Tables in a fresh install. */
@@ -18,6 +18,18 @@ export const ALARM_SNOOZE_MINUTES = 10;
 export const ALARM_REPEAT_MINUTES = 3;
 /** How often the app re-checks alarms and timers. */
 export const TICK_MS = 15000;
+
+/** Cash is always offered and is what the cash drawer counts. Other methods are set in Settings. */
+export const CASH = 'Cash';
+
+/** Staff PINs are this many digits. */
+export const PIN_LENGTH = 4;
+/** The activity log keeps this many of the newest entries. */
+export const LOG_LIMIT = 500;
+
+/** The "Popular" menu tab: best sellers over this many days. */
+export const POPULAR_DAYS = 30;
+export const POPULAR_LIMIT = 12;
 
 export const NOTE_PRESETS = [
   'No onions',
@@ -51,4 +63,11 @@ export const DEFAULT_SETTINGS = {
   /** Alarm when a served table is still unpaid after this many minutes (0 = off). */
   unpaidAlarmMinutes: 5,
   alarmSound: true,
+  /** Ways to pay besides cash, e.g. ['Card']. Empty means cash only. */
+  otherPayments: ['Card'],
+  /** Items with tracked stock at or below this show as "low". */
+  lowStock: 5,
+  /** Loyalty: a reward after this many paid visits (0 = off), and what the reward is. */
+  loyaltyVisits: 10,
+  loyaltyReward: 'Free drink',
 };
