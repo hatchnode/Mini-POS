@@ -1,3 +1,5 @@
+import { customerStats, findCustomer, rewardStatus } from '../domain/customers.js';
+import { popularItemIds } from '../domain/insights.js';
 import { isInKitchen, isServed, lineKitchenStatus } from '../domain/kitchen.js';
 import {
   balanceDue,
@@ -8,6 +10,7 @@ import {
   orderLabel,
   unsentCount,
 } from '../domain/orders.js';
+import { stockLevel } from '../domain/stock.js';
 import { findTable, tableLabel } from '../domain/tables.js';
 import { currentOrder, store } from '../state/store.js';
 import { alarmingOrderIds } from '../ui/alarm.js';
@@ -15,21 +18,34 @@ import { categoryColor, categoryIndex, money } from '../ui/format.js';
 import { timeStr } from '../utils/date.js';
 import { esc, plural } from '../utils/text.js';
 
+/** A menu tile. Items with tracked stock show what is left; sold-out ones can't be tapped. */
+function itemTile(i) {
+  const level = stockLevel(i, Number(store.data.settings.lowStock) || 0);
+  const left = level
+    ? `<em class="stock ${level}">${level === 'out' ? 'Sold out' : `${i.stock} left`}</em>`
+    : '';
+  return `<button class="item ${level === 'out' ? 'out' : ''}" style="--c:${categoryColor(i.catId)}" data-act="addItem" data-id="${i.id}" ${level === 'out' ? 'disabled' : ''}>
+    <b>${esc(i.name)}</b><span class="item-foot"><span>${money(i.price)}</span>${left}</span></button>`;
+}
+
 /** Menu tiles for the current category and search. Also re-rendered alone while typing in search. */
 export function renderItemsGrid() {
   const { data, ui } = store;
   const q = ui.search.trim().toLowerCase();
-  const items = data.items
-    .filter((i) => i.active && (ui.category === 'all' || i.catId === ui.category))
-    .filter((i) => !q || i.name.toLowerCase().includes(q))
-    .sort((a, b) => categoryIndex(a.catId) - categoryIndex(b.catId));
+  const matches = (i) => i.active && (!q || i.name.toLowerCase().includes(q));
+  let items;
+  if (ui.category === 'popular') {
+    // Best sellers first, so the things ordered most are one tap away.
+    items = popularItemIds(data)
+      .map((id) => data.items.find((i) => i.id === id))
+      .filter((i) => i && matches(i));
+  } else {
+    items = data.items
+      .filter((i) => matches(i) && (ui.category === 'all' || i.catId === ui.category))
+      .sort((a, b) => categoryIndex(a.catId) - categoryIndex(b.catId));
+  }
   if (!items.length) return '<div class="empty span-all">No items here. Add some in the Menu tab.</div>';
-  return items
-    .map(
-      (i) =>
-        `<button class="item" style="--c:${categoryColor(i.catId)}" data-act="addItem" data-id="${i.id}"><b>${esc(i.name)}</b><span>${money(i.price)}</span></button>`,
-    )
-    .join('');
+  return items.map(itemTile).join('');
 }
 
 function tableTile(t, firstOpen, order, editing, alarming) {
@@ -108,7 +124,9 @@ function tablesPanel(order, open) {
 
 function menuPanel() {
   const { data, ui } = store;
-  const chips = [{ id: 'all', name: 'All' }, ...data.categories]
+  const popular = popularItemIds(data).length ? [{ id: 'popular', name: '★ Popular' }] : [];
+  if (ui.category === 'popular' && !popular.length) ui.category = 'all';
+  const chips = [{ id: 'all', name: 'All' }, ...popular, ...data.categories]
     .map(
       (c) =>
         `<button class="chip ${ui.category === c.id ? 'on' : ''}" data-act="selectCategory" data-id="${c.id}">${esc(c.name)}</button>`,
@@ -138,16 +156,39 @@ function lineRow(order, l) {
       <div class="nm">${esc(l.name)}${l.qty > l.sent ? '<span class="new-dot" title="Not yet sent to kitchen"></span>' : ''}</div>
       ${l.note ? `<div class="note">↳ ${esc(l.note)}</div>` : ''}
       ${lineStatus(order, l)}
-      <div class="meta">${money(l.price)} each · <button class="linkbtn" data-act="editNote" data-id="${l.id}">${l.note ? 'Edit note' : 'Add note'}</button></div>
+      <div class="meta">${l.reward ? 'Free reward' : `${money(l.price)} each`} · <button class="linkbtn" data-act="editNote" data-id="${l.id}">${l.note ? 'Edit note' : 'Add note'}</button></div>
     </div>
     <div class="ln-side">
       <div class="qty">
         <button data-act="decreaseLine" data-id="${l.id}" aria-label="Remove one">−</button>
         <b>${l.qty}</b>
-        <button data-act="increaseLine" data-id="${l.id}" aria-label="Add one">+</button>
+        <button data-act="increaseLine" data-id="${l.id}" aria-label="Add one" ${l.reward ? 'disabled' : ''}>+</button>
       </div>
       <div class="lt">${money(l.price * l.qty)}</div>
     </div>
+  </div>`;
+}
+
+/** The regular customer on this order, with their stamp-card progress and any reward they can claim. */
+function customerBar(order) {
+  if (!order.customerId) {
+    return `<div class="cust-bar"><button class="linkbtn" data-act="openCustomerDialog">+ Add customer</button>${order.customerName ? ` <span class="muted small">${esc(order.customerName)}</span>` : ''}</div>`;
+  }
+  const { data } = store;
+  const customer = findCustomer(data, order.customerId);
+  const visits = customerStats(data).get(order.customerId)?.visits || 0;
+  const reward = customer && rewardStatus(customer, visits, Number(data.settings.loyaltyVisits) || 0);
+  const hasReward = order.lines.some((l) => l.reward);
+  let progress = '';
+  if (reward && reward.due && !hasReward) {
+    progress = `<button class="small btn-ok" data-act="redeemReward">Reward due: ${esc(data.settings.loyaltyReward || 'Reward')}</button>`;
+  } else if (reward) {
+    progress = `<span class="muted small">${reward.progress}/${reward.perReward} visits to a reward</span>`;
+  }
+  return `<div class="cust-bar">
+    <span class="cust-name">👤 <b>${esc(order.customerName)}</b> <span class="muted small">${plural(visits, 'visit')}</span></span>
+    ${progress}
+    <button class="linkbtn" data-act="removeOrderCustomer" aria-label="Remove customer from this order">Remove</button>
   </div>`;
 }
 
@@ -195,12 +236,13 @@ function ticketPanel(order) {
   const canWalkout = !paid && order.dishes?.length;
 
   return `<div class="panel-h">
-      <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}</div></div>
+      <div><div class="tk-title">${esc(orderLabel(order))}</div><div class="muted small">Order #${order.no} · ordered ${timeStr(order.createdAt)}${order.staff ? ` · ${esc(order.staff)}` : ''}</div></div>
       <div class="inrow">
         ${store.data.tables.length ? '<button class="small" data-act="moveOrder">Move</button>' : ''}
         <button class="small btn-danger" data-act="voidOrder">Void</button>
       </div>
     </div>
+    ${customerBar(order)}
     <div class="scroll panel-b" data-keep="ticket">${hasLines ? order.lines.map((l) => lineRow(order, l)).join('') : '<div class="empty">No items yet.</div>'}</div>
     <div class="sum">
       <div class="row total"><span>Total</span><span>${money(t.total)}</span></div>

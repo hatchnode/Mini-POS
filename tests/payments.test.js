@@ -87,7 +87,9 @@ describe('payment methods', () => {
     const order = servedOrder(emptyData());
     const result = markPaid(order, 3000, { method: 'Cash', tendered: 2000, staff: 'Ana' });
     expect(result).toMatchObject({ ok: true, change: 750 });
-    expect(order.payments).toEqual([{ at: 3000, amount: 1250, method: 'Cash', tendered: 2000, staff: 'Ana' }]);
+    expect(order.payments).toEqual([
+      { at: 3000, amount: 1250, method: 'Cash', tendered: 2000, staff: 'Ana' },
+    ]);
   });
 
   it('refuses cash that does not cover the bill', () => {

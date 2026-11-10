@@ -1,4 +1,5 @@
 import { balanceDue, calcTotals, isPaid, orderLabel } from '../domain/orders.js';
+import { settledPayments } from '../domain/payments.js';
 import { store } from '../state/store.js';
 import { $ } from '../utils/dom.js';
 import { dateTimeStr } from '../utils/date.js';
@@ -32,10 +33,31 @@ export function receiptHtml(order, now = Date.now()) {
     t.tip ? row('Tip', money(t.tip)) : '',
   ].join('');
 
+  // How it was paid; cash received and change when staff typed the cash in.
+  const payments = paid
+    ? settledPayments(order)
+        .map(
+          (p) =>
+            row(`Paid${p.method ? ` · ${esc(p.method)}` : ''}`, money(p.amount)) +
+            (p.tendered != null && p.tendered > p.amount
+              ? row('Received', money(p.tendered)) + row('Change', money(p.tendered - p.amount))
+              : ''),
+        )
+        .join('')
+    : '';
+  const people = [
+    order.customerName ? `Customer: ${esc(order.customerName)}` : '',
+    order.staff ? `Served by: ${esc(order.staff)}` : '',
+  ]
+    .filter(Boolean)
+    .map((text) => `<div>${text}</div>`)
+    .join('');
+
   return `<div class="rc">
     <div class="rc-c"><div class="rc-name">${esc(s.name)}</div></div>
     <hr><div class="rc-c">${paid ? 'RECEIPT' : 'BILL'}</div>
     <div>Order #${order.no} · ${esc(orderLabel(order))}</div>
+    ${people}
     <table>
       ${order.createdAt ? row('Ordered', dateTimeStr(order.createdAt)) : ''}
       ${order.completedAt ? row('Completed', dateTimeStr(order.completedAt)) : row('Printed', dateTimeStr(now))}
@@ -45,7 +67,8 @@ export function receiptHtml(order, now = Date.now()) {
     <hr><table>
       ${legacyRows ? row('Subtotal', money(t.subtotal)) + legacyRows : ''}
       ${row('<b>TOTAL</b>', `<b>${money(t.total)}</b>`)}
-      ${paid && order.paidAt ? row('Paid', dateTimeStr(order.paidAt)) : ''}
+      ${payments}
+      ${paid && order.paidAt ? row('Paid at', dateTimeStr(order.paidAt)) : ''}
       ${isOpen && !paid ? row('<b>AMOUNT DUE</b>', `<b>${money(balanceDue(order))}</b>`) : ''}
     </table>
     ${order.status === 'walkout' ? '<div class="rc-c"><b>*** NOT PAID · WALKED OUT ***</b></div>' : ''}

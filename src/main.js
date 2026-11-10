@@ -1,6 +1,7 @@
 import './styles/index.css';
 
 import { handlers } from './actions/index.js';
+import { isPinDialogOpen, pinKey } from './components/pinDialog.js';
 import { STORAGE_KEY } from './config.js';
 import { onSaveError, replaceData, store } from './state/store.js';
 import { startClock } from './ui/clock.js';
@@ -21,6 +22,10 @@ bindEvents(handlers, {
     if (e.key === 'Escape' && isModalOpen()) {
       closeModal();
       render();
+    }
+    if (isPinDialogOpen() && (/^\d$/.test(e.key) || e.key === 'Backspace')) {
+      e.preventDefault();
+      pinKey(e.key === 'Backspace' ? 'back' : e.key);
     }
     if (e.key === 'Enter' && e.target.id === 'note-input') {
       e.preventDefault();
@@ -44,6 +49,14 @@ window.addEventListener('storage', (e) => {
 
 // Browsers only allow sound after the first tap or key press.
 ['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, unlockAudio, { once: true }));
+
+// Ask the browser not to clear this site's data when the device runs low on space.
+navigator.storage?.persist?.().catch(() => {});
+
+// In the built app, a service worker keeps a copy of the app so it opens with no internet.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
 
 startClock();
 render();

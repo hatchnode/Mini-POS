@@ -42,7 +42,8 @@ const nameTaken = (data, name, exceptId) =>
 export function addStaff(data, { name = '', pin = '', role = 'staff' }) {
   const finalName = name.trim();
   if (!finalName) return { ok: false, error: 'Enter a name' };
-  if (nameTaken(data, finalName)) return { ok: false, error: `There is already someone called "${finalName}"` };
+  if (nameTaken(data, finalName))
+    return { ok: false, error: `There is already someone called "${finalName}"` };
   if (!isValidPin(pin)) return { ok: false, error: `The PIN must be ${PIN_LENGTH} digits` };
   const id = uid();
   const member = {

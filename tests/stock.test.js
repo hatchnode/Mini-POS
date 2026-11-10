@@ -35,13 +35,9 @@ describe('stock', () => {
   });
 
   it('parses the stock box: blank means not tracked', () => {
-    expect([parseStock(''), parseStock('  '), parseStock('12'), parseStock('3.9'), parseStock('-1')]).toEqual([
-      null,
-      null,
-      12,
-      3,
-      null,
-    ]);
+    expect([parseStock(''), parseStock('  '), parseStock('12'), parseStock('3.9'), parseStock('-1')]).toEqual(
+      [null, null, 12, 3, null],
+    );
     expect(parseStock('abc')).toBe(null);
   });
 
@@ -60,7 +56,12 @@ describe('stock', () => {
 
   it('gives back only what was never sent to the kitchen', () => {
     const data = { items: [{ id: 'a', name: 'A', stock: 1 }] };
-    const order = { lines: [{ itemId: 'a', qty: 3, sent: 2 }, { itemId: 'gone', qty: 1, sent: 0 }] };
+    const order = {
+      lines: [
+        { itemId: 'a', qty: 3, sent: 2 },
+        { itemId: 'gone', qty: 1, sent: 0 },
+      ],
+    };
     returnUnsent(data, order);
     expect(data.items[0].stock).toBe(2);
   });

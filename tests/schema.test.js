@@ -170,7 +170,11 @@ describe('schema', () => {
     expect([d.staff, d.customers, d.log, d.drawer]).toEqual([[], [], [], {}]);
     expect(d.settings).toMatchObject({ otherPayments: ['Card'], lowStock: 5, loyaltyVisits: 10 });
     expect(d.items[0]).not.toHaveProperty('stock');
-    const again = migrate({ ...d, staff: [{ id: 's', name: 'Ana' }], settings: { ...d.settings, otherPayments: [] } });
+    const again = migrate({
+      ...d,
+      staff: [{ id: 's', name: 'Ana' }],
+      settings: { ...d.settings, otherPayments: [] },
+    });
     expect(again.staff).toHaveLength(1);
     expect(again.settings.otherPayments).toEqual([]);
   });

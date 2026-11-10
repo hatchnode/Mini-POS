@@ -1,3 +1,4 @@
+import { isTracked, parseStock } from '../domain/stock.js';
 import { uid } from '../utils/id.js';
 import { save, store } from '../state/store.js';
 import { confirmDialog } from '../ui/modal.js';
@@ -77,6 +78,18 @@ export const change = {
     item.price = Math.max(0, parseCents(el.value));
     el.value = centsToInput(item.price);
     saved();
+  },
+  /** Blank = don't track; a number = portions left (0 = sold out). */
+  setItemStock(el) {
+    const item = findItem(el.dataset.id);
+    if (!item) return;
+    const stock = parseStock(el.value);
+    if (stock == null) delete item.stock;
+    else item.stock = stock;
+    save();
+    render();
+    if (!isTracked(item)) toast(`${item.name}: stock not tracked`);
+    else toast(stock === 0 ? `${item.name} marked sold out` : `${item.name}: ${stock} left`);
   },
   setItemActive(el) {
     const item = findItem(el.dataset.id);

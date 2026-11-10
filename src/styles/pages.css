@@ -127,3 +127,53 @@ table.t {
 .panel.attention h2 {
   color: var(--bad);
 }
+
+/* stock column in the menu editor */
+.t input.stock {
+  width: 72px;
+  text-align: right;
+}
+.t tr.stock-out input.stock {
+  border-color: var(--bad);
+  color: var(--bad);
+  font-weight: 700;
+}
+.t tr.stock-low input.stock {
+  border-color: var(--warn);
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* sales: cash drawer, split tables, trends */
+.drawer {
+  display: grid;
+  gap: 8px;
+}
+.drawer .row {
+  align-items: center;
+  min-height: 38px;
+}
+.drawer .row.strong {
+  font-weight: 700;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0;
+}
+.drawer input.price {
+  width: 120px;
+  text-align: right;
+}
+.panel-h.sub-h {
+  border-top: 1px solid var(--line);
+}
+.split.even {
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 1100px) {
+  .split.even {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tablewrap.log {
+  max-height: 420px;
+}

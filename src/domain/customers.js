@@ -21,7 +21,8 @@ const phoneTaken = (data, phone, exceptId) =>
 export function addCustomer(data, { name = '', phone = '' }, now = Date.now()) {
   const finalName = name.trim();
   if (!finalName) return { ok: false, error: 'Enter the customer’s name' };
-  if (phoneTaken(data, phone)) return { ok: false, error: 'A customer with that phone number already exists' };
+  if (phoneTaken(data, phone))
+    return { ok: false, error: 'A customer with that phone number already exists' };
   const customer = { id: uid(), name: finalName, phone: phone.trim(), createdAt: now, redeemed: 0 };
   data.customers.push(customer);
   return { ok: true, customer };
@@ -78,7 +79,9 @@ export function rewardStatus(customer, visits, perReward) {
 
 /** Customers matching a name or phone search; with no search, the most recently added. */
 export function searchCustomers(data, query, limit = 8) {
-  const q = String(query || '').trim().toLowerCase();
+  const q = String(query || '')
+    .trim()
+    .toLowerCase();
   const list = [...(data.customers || [])].sort((a, b) => b.createdAt - a.createdAt);
   if (!q) return list.slice(0, limit);
   const qDigits = digits(q);
