@@ -168,15 +168,15 @@ describe('schema', () => {
       orders: [],
     });
     expect([d.staff, d.customers, d.log, d.drawer]).toEqual([[], [], [], {}]);
-    expect(d.settings).toMatchObject({ otherPayments: ['Card'], lowStock: 5, loyaltyVisits: 10 });
+    expect(d.settings).toMatchObject({ otherPayments: [], lowStock: 5, loyaltyVisits: 10 });
     expect(d.items[0]).not.toHaveProperty('stock');
     const again = migrate({
       ...d,
       staff: [{ id: 's', name: 'Ana' }],
-      settings: { ...d.settings, otherPayments: [] },
+      settings: { ...d.settings, otherPayments: ['Voucher'] },
     });
     expect(again.staff).toHaveLength(1);
-    expect(again.settings.otherPayments).toEqual([]);
+    expect(again.settings.otherPayments).toEqual(['Voucher']);
   });
 
   it('recognises backups', () => {

@@ -59,7 +59,7 @@ function dishLog(dishes) {
   return `<table class="t"><thead><tr><th>Order</th><th>Dish</th><th>Ordered</th><th>Completed</th><th class="n">Time taken</th><th class="n">Amount</th><th>Bill</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-/** "Cash", "Card", or "Cash + Card" when a bill was paid in two goes. */
+/** "Cash", or e.g. "Cash + Voucher" when a bill was paid in two goes by different methods. */
 const paidBy = (o) =>
   [
     ...new Set(
@@ -145,9 +145,9 @@ function renderDayTab() {
         <div class="tablewrap">${topItemsTable(s.topItems)}</div></section>
     </div>
     <div class="split">
-      <section class="panel"><div class="panel-h"><h2>How it was paid</h2></div>
-        <div class="tablewrap">${splitTable(s.byMethod, s.total, 'Method')}</div>
-        ${s.byStaff.length ? `<div class="panel-h sub-h"><h2>Payments taken by</h2></div><div class="tablewrap">${splitTable(s.byStaff, s.total, 'Staff')}</div>` : ''}
+      <section class="panel">
+        ${s.byMethod.length > 1 || !s.byStaff.length ? `<div class="panel-h"><h2>How it was paid</h2></div><div class="tablewrap">${splitTable(s.byMethod, s.total, 'Method')}</div>` : ''}
+        ${s.byStaff.length ? `<div class="panel-h ${s.byMethod.length > 1 ? 'sub-h' : ''}"><h2>Payments taken by</h2></div><div class="tablewrap">${splitTable(s.byStaff, s.total, 'Staff')}</div>` : ''}
       </section>
       ${drawerPanel(ui.salesDate, s.cashTotal)}
     </div>

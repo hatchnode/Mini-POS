@@ -19,7 +19,7 @@ export const click = {
     s.footer = $('#s-footer').value.trim();
     s.unpaidAlarmMinutes = Math.max(0, Math.min(120, parseInt($('#s-alarm-minutes').value, 10) || 0));
     s.alarmSound = $('#s-alarm-sound').checked;
-    // "Card, Bank transfer" → ['Card', 'Bank transfer']; cash is always offered and isn't listed.
+    // "Bank transfer, Voucher" → ['Bank transfer', 'Voucher']; cash is always offered and isn't listed.
     s.otherPayments = [
       ...new Set(
         $('#s-payments')

@@ -96,7 +96,7 @@ export function renderSettingsView() {
       </div>
       <div class="grid2">
         <label class="fld">Other ways to pay
-          <input id="s-payments" value="${esc((s.otherPayments || []).join(', '))}" placeholder="e.g. Card, Bank transfer">
+          <input id="s-payments" value="${esc((s.otherPayments || []).join(', '))}" placeholder="Cash only">
           <span class="muted small settings-note">Cash is always offered. List the others separated by commas, or leave blank for cash only.</span>
         </label>
         <label class="fld">Low stock warning at

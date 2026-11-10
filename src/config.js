@@ -63,8 +63,8 @@ export const DEFAULT_SETTINGS = {
   /** Alarm when a served table is still unpaid after this many minutes (0 = off). */
   unpaidAlarmMinutes: 5,
   alarmSound: true,
-  /** Ways to pay besides cash, e.g. ['Card']. Empty means cash only. */
-  otherPayments: ['Card'],
+  /** Ways to pay besides cash, e.g. ['Bank transfer']. Empty (the default) means cash only. */
+  otherPayments: [],
   /** Items with tracked stock at or below this show as "low". */
   lowStock: 5,
   /** Loyalty: a reward after this many paid visits (0 = off), and what the reward is. */

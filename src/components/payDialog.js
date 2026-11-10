@@ -30,14 +30,14 @@ export function openPayDialog(order) {
     <div class="mh"><h3>Take payment · ${esc(orderLabel(order))} #${order.no}</h3>${closeButton}</div>
     <div class="mb">
       <div class="row total"><span>Amount due</span><span>${money(due)}</span></div>
-      <label class="fld">Cash received (optional, to work out the change)
+      <label class="fld">Cash received from the customer
         <input id="pay-tendered" type="number" step="0.01" min="0" inputmode="decimal" data-input="payTendered" data-due="${due}" placeholder="${centsToInput(due)}">
       </label>
       <div class="quick">${quick}</div>
       <div class="row pay-change" id="pay-change"><span>Change to give</span><span>—</span></div>
     </div>
     <div class="mf pay-methods">
-      <button class="btn-ok" data-act="confirmPay" data-id="${order.id}" data-method="${CASH}">Paid in cash</button>
+      <button class="btn-ok" data-act="confirmPay" data-id="${order.id}" data-method="${CASH}">${others ? 'Paid in cash' : `Paid ${money(due)}`}</button>
       ${others}
     </div>`);
 }
@@ -63,7 +63,7 @@ export function openPaidDialog(order, { method, change }) {
   openModal(`
     <div class="mh"><h3>Paid · ${esc(orderLabel(order))} #${order.no}</h3>${closeButton}</div>
     <div class="mb">
-      <div class="row"><span>Paid by ${esc(method)}</span><b>${money(paid)}</b></div>
+      <div class="row"><span>${method === CASH ? 'Paid' : `Paid by ${esc(method)}`}</span><b>${money(paid)}</b></div>
       ${change > 0 ? `<div class="row total pay-change"><span>Change to give</span><span>${money(change)}</span></div>` : ''}
       ${next ? `<p class="muted">${next}</p>` : ''}
     </div>

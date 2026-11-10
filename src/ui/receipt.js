@@ -1,3 +1,4 @@
+import { CASH } from '../config.js';
 import { balanceDue, calcTotals, isPaid, orderLabel } from '../domain/orders.js';
 import { settledPayments } from '../domain/payments.js';
 import { store } from '../state/store.js';
@@ -38,7 +39,7 @@ export function receiptHtml(order, now = Date.now()) {
     ? settledPayments(order)
         .map(
           (p) =>
-            row(`Paid${p.method ? ` · ${esc(p.method)}` : ''}`, money(p.amount)) +
+            row(`Paid${p.method && p.method !== CASH ? ` · ${esc(p.method)}` : ''}`, money(p.amount)) +
             (p.tendered != null && p.tendered > p.amount
               ? row('Received', money(p.tendered)) + row('Change', money(p.tendered - p.amount))
               : ''),
